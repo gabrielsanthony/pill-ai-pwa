@@ -3,12 +3,13 @@ import { initializeApp } from 'firebase/app';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID",
+ apiKey: "AIzaSyD4IIK7DRJLGE5bKNe5J0W2ufbyUWsA4oc",
+  authDomain: "pill-ai-935d5.firebaseapp.com",
+  projectId: "pill-ai-935d5",
+  storageBucket: "pill-ai-935d5.appspot.com",
+  messagingSenderId: "861184373325",
+  appId: "1:861184373325:web:c0589d6a64e1c1fa046204",
+  measurementId: "G-XPXEY3KPPS"
 };
 
 const app = initializeApp(firebaseConfig);
