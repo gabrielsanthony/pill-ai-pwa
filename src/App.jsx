@@ -1,12 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import logo from './assets/pill-ai-logo.png'; // ✅ Updated image import
+import { requestPermissionAndGetToken } from './firebase-notifications';
+
 function App() {
   const [language, setLanguage] = useState('English');
   const [question, setQuestion] = useState('');
   const [simplify, setSimplify] = useState(false);
   const [memory, setMemory] = useState(false);
   const [answer, setAnswer] = useState('');
+
+  useEffect(() => {
+    requestPermissionAndGetToken();
+  }, []);
+
   const content = {
     English: {
       privacy: `Pill-AI does not collect or store any personal data. All interactions are processed anonymously. Please consult a healthcare professional for any medical concerns.`,
