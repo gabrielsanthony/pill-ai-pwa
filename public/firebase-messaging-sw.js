@@ -12,6 +12,8 @@ firebase.initializeApp({
   measurementId: "G-XPXEY3KPPS"
 });
 
+const messaging = firebase.messaging();
+
 // Show notification for background messages
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Received background message ', payload);
@@ -24,7 +26,3 @@ messaging.onBackgroundMessage((payload) => {
 
   self.registration.showNotification(notificationTitle, notificationOptions);
 });
-
-
-
-const messaging = firebase.messaging();
