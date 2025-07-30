@@ -111,7 +111,34 @@ useEffect(() => {
         />
       </div>
 
+      <button
+  className="send-button"
+  onClick={async () => {
+    const payload = {
+      question,
+      language,
+      simplify,
+      memory,
+    };
 
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json();
+      setAnswer(result.answer);
+      setShowReminderForm(false); // Reset in case they ask a new question
+    } catch (err) {
+      console.error(err);
+      alert("❌ Error fetching response");
+    }
+  }}
+>
+  Send
+</button>
 
     {answer && (
   <>
