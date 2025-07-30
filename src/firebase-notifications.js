@@ -36,3 +36,6 @@ export const requestPermissionAndGetToken = async () => {
 onMessage(messaging, (payload) => {
   console.log('📩 Foreground message received:', payload);
 });
+
+import { getMessaging } from 'firebase/messaging';
+export const messaging = getMessaging();
