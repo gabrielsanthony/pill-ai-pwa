@@ -3,12 +3,18 @@ import './App.css';
 import logo from './assets/pill-ai-logo.png'; // ✅ Updated image import
 import { requestPermissionAndGetToken } from './firebase-notifications';
 import { onMessage, getMessaging } from 'firebase/messaging'; // already there
+import Fuse from 'fuse.js';
+import { medicineNames } from './medicineList';
 
-// 🔍 Extract first medicine-like word
+const fuse = new Fuse(medicineNames, {
+  includeScore: true,
+  threshold: 0.3, // how fuzzy (lower = stricter)
+});
+
 function extractMedicineName(text) {
-  const match = text.match(/(?:take|use|about|for)\s+([A-Za-z0-9\-]+)/i);
-    return match ? match[1] : '';
-    }
+  const results = fuse.search(text);
+  return results.length ? results[0].item : '';
+}
 
     // 📅 Extract "for X days"
     function extractDuration(text) {
