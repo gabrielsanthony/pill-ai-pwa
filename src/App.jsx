@@ -7,21 +7,21 @@ import { onMessage, getMessaging } from 'firebase/messaging'; // already there
 // 🔍 Extract first medicine-like word
 function extractMedicineName(text) {
   const match = text.match(/(?:take|use|about|for)\s+([A-Za-z0-9\-]+)/i);
-  return match ? match[1] : '';
-}
+    return match ? match[1] : '';
+    }
 
-// 📅 Extract "for X days"
-function extractDuration(text) {
-  const match = text.match(/for (\d+) days?/i);
-  return match ? parseInt(match[1]) : null;
-}
+    // 📅 Extract "for X days"
+    function extractDuration(text) {
+      const match = text.match(/for (\d+) days?/i);
+        return match ? parseInt(match[1]) : null;
+        }
 
-function App() {
-  const [language, setLanguage] = useState('English');
-  const [question, setQuestion] = useState('');
-  const [simplify, setSimplify] = useState(false);
-  const [memory, setMemory] = useState(false);
-  const [answer, setAnswer] = useState('');
+        function App() {
+          const [language, setLanguage] = useState('English');
+            const [question, setQuestion] = useState('');
+              const [simplify, setSimplify] = useState(false);
+                const [memory, setMemory] = useState(false);
+                  const [answer, setAnswer] = useState('');
 
   const [isLongTerm, setIsLongTerm] = useState(false);
   const [durationDays, setDurationDays] = useState(7); // Default 7 days
@@ -32,20 +32,16 @@ function App() {
   const [timesPerDay, setTimesPerDay] = useState(1);
   const [dailyTimes, setDailyTimes] = useState(['']);
 
- useEffect(() => {
-  requestPermissionAndGetToken();
+// ⬇️ ADD THIS BELOW your first useEffect block
+useEffect(() => {
+  if (answer) {
+    const name = extractMedicineName(answer);
+    const duration = extractDuration(answer);
 
-  // Foreground notifications
-  const messaging = getMessaging();
-  onMessage(messaging, (payload) => {
-    console.log("📥 Foreground message received:", payload);
-    alert("🔔 Foreground push: " + payload.notification?.body); // optional
-    new Notification(payload.notification?.title || "Pill-AI", {
-  body: payload.notification?.body,
-  icon: logo,
-});
-  });
-}, []);
+    if (name) setReminderDrug(name);
+    if (duration) setDurationDays(duration);
+  }
+}, [answer]);
 
   const content = {
     English: {
@@ -114,50 +110,9 @@ function App() {
           onChange={(e) => setQuestion(e.target.value)}
         />
       </div>
-      <button
-        className="send-button"
-        onClick={async () => {
-  if (question.trim() === '') return;
 
-  setAnswer("⏳ Loading...");
 
-  try {
-    const response = await fetch("/api/chat", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    question,
-    language,
-    simplify
-  })
-});
 
-const data = await response.json();
-const reply = data.reply || "⚠️ No response received.";
-setAnswer(reply);
-setShowReminderForm(true);
-
-// 🧠 Extract and set drug name and duration
-const med = extractMedicineName(reply);
-if (med) setReminderDrug(med);
-
-const days = extractDuration(reply);
-if (days) {
-  setIsLongTerm(false); // Ensure the duration input is shown
-  setDurationDays(days);
-}
-setShowReminderForm(true); // 👈 show the reminder button
-
-  } catch (err) {
-    console.error(err);
-    setAnswer("⚠️ Error contacting the AI service.");
-  }
-}}
-    >
-      Send
-    </button>
     {answer && (
   <>
     <div className="answer-box">
@@ -177,139 +132,171 @@ setShowReminderForm(true); // 👈 show the reminder button
 )}
 
 {showReminderForm && (
-<div className="reminder-form">
-  <h3>⏰ Set a Medication Reminder</h3>
+  <div className="reminder-form">
+    <h3>⏰ Set a Medication Reminder</h3>
 
-  <div className="form-group">
-    <label>💊 Medicine Name:</label>
-    <input
-      type="text"
-      placeholder="e.g. Amoxicillin"
-      value={reminderDrug}
-      onChange={(e) => setReminderDrug(e.target.value)}
-    />
-  </div>
-  
+    <div className="form-group">
+      <label>💊 Medicine Name:</label>
+      <input
+        type="text"
+        placeholder="e.g. Amoxicillin"
+        value={reminderDrug}
+        onChange={(e) => setReminderDrug(e.target.value)}
+      />
+    </div>
 
-  <div className="form-group">
-    <label>⏰ Reminder Time:</label>
-    <input
-      type="time"
-      value={reminderTime}
-      onChange={(e) => setReminderTime(e.target.value)}
-    />
-  </div>
+    <div className="form-group">
+      <label>
+        <input
+          type="checkbox"
+          checked={isLongTerm}
+          onChange={() => setIsLongTerm(!isLongTerm)}
+        />
+        📆 Long Term Medication
+      </label>
+    </div>
 
-  <div className="form-group">
+    {!isLongTerm && (
+      <div className="form-group">
+        <label>📅 Duration (days):</label>
+        <input
+          type="number"
+          min="1"
+          max="20"
+          value={durationDays}
+          onChange={(e) => setDurationDays(Number(e.target.value))}
+        />
+      </div>
+    )}
+
+    <div className="form-group">
+      <label>🔁 Times per Day:</label>
+      <select
+        value={timesPerDay}
+        onChange={(e) => {
+          const newTimes = parseInt(e.target.value);
+          setTimesPerDay(newTimes);
+          setDailyTimes(Array(newTimes).fill(''));
+        }}
+      >
+        {[1, 2, 3, 4].map((num) => (
+          <option key={num} value={num}>{num}</option>
+        ))}
+      </select>
+    </div>
+
+    {dailyTimes.map((time, idx) => (
+      <div className="form-group" key={idx}>
+        <label>🕒 Time {idx + 1}:</label>
+        <input
+          type="time"
+          value={time}
+          onChange={(e) => {
+            const updated = [...dailyTimes];
+            updated[idx] = e.target.value;
+            setDailyTimes(updated);
+          }}
+        />
+      </div>
+    ))}
+
+    <button
+      className="send-button"
+      onClick={async () => {
+        console.log("💾 Saving reminder:", {
+          reminderDrug,
+          isLongTerm,
+          durationDays: isLongTerm ? 'Long Term' : durationDays,
+          timesPerDay,
+          dailyTimes,
+        });
+
+        try {
+          const token = await requestPermissionAndGetToken();
+
+          if (!token) {
+            alert("❌ Could not get push token. Reminder not saved.");
+            return;
+          }
+
+          const firstTime = dailyTimes[0] || "09:00";
+
+          const response = await fetch("/api/scheduleReminder", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              token,
+              title: `🕒 Pill Reminder: ${reminderDrug}`,
+              body: `Take ${reminderDrug} at ${firstTime}`,
+            }),
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            alert(`✅ Notification sent for ${reminderDrug}`);
+          } else {
+            console.error(result.error);
+            alert("❌ Failed to send notification");
+          }
+        } catch (err) {
+          console.error(err);
+          alert("❌ Error while saving reminder");
+        }
+      }}
+    >
+      Save Reminder
+   
+    </button>
+
+    <p className="warning">
+      ⚠️ <strong>Pill-AI is a prototype for testing purposes only and MUST NOT be relied upon for health advice.</strong>
+      Please contact your doctor or pharmacist if you have any questions about your health or medications.
+    </p>
+  </div> {/* ✅ Closes reminder-form */}
+)}
+
+  {/* ✅ Always visible – these are OUTSIDE the reminder form */}
+  <div className="toggles">
     <label>
       <input
         type="checkbox"
-        checked={isLongTerm}
-        onChange={() => setIsLongTerm(!isLongTerm)}
+        checked={simplify}
+        onChange={() => setSimplify(!simplify)}
       />
-      📆 Long Term Medication
+      ✨ Simplify the answer's language
+    </label>
+    <label>
+      <input
+        type="checkbox"
+        checked={memory}
+        onChange={() => setMemory(!memory)}
+      />
+      🧠 Memorise previous answers for context in follow-up questions
     </label>
   </div>
 
-  {!isLongTerm && (
-    <div className="form-group">
-      <label>📅 Duration (days):</label>
-      <input
-        type="number"
-        min="1"
-        max="20"
-        value={durationDays}
-        onChange={(e) => setDurationDays(Number(e.target.value))}
-      />
-    </div>
-  )}
+  <details className="info-section">
+    <summary>🔒 Privacy Policy – Click to expand</summary>
+    <p>{content[language].privacy}</p>
+  </details>
 
-<div className="form-group">
-  <label>🔁 Times per Day:</label>
-  <select
-    value={timesPerDay}
-    onChange={(e) => {
-      const newTimes = parseInt(e.target.value);
-      setTimesPerDay(newTimes);
-      setDailyTimes(Array(newTimes).fill(''));
-    }}
-  >
-    {[1, 2, 3, 4].map((num) => (
-      <option key={num} value={num}>{num}</option>
-    ))}
-  </select>
-</div>
-
-{dailyTimes.map((time, idx) => (
-  <div className="form-group" key={idx}>
-    <label>🕒 Time {idx + 1}:</label>
-    <input
-      type="time"
-      value={time}
-      onChange={(e) => {
-        const updated = [...dailyTimes];
-        updated[idx] = e.target.value;
-        setDailyTimes(updated);
-      }}
-    />
-  </div>
-))}
-
-  <button
-    className="send-button"
-    onClick={() => {
-      console.log("💾 Saving reminder:", {
-        reminderDrug,
-        reminderTime,
-        isLongTerm,
-        durationDays: isLongTerm ? 'Long Term' : durationDays,
-      });
-      alert(`✅ Reminder saved for ${reminderDrug}!`);
-    }}
-  >
-    Save Reminder
-  </button>
-</div>
-)}
-
-
-      <p className="warning">
-        ⚠️ <strong>Pill-AI is a prototype for testing purposes only and MUST NOT be relied upon for health advice.</strong>
-        Please contact your doctor or pharmacist if you have any questions about your health or medications.
-      </p>
-      <div className="toggles">
-        <label>
-          <input
-            type="checkbox"
-            checked={simplify}
-            onChange={() => setSimplify(!simplify)}
-          />
-          ✨ Simplify the answer's language
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={memory}
-            onChange={() => setMemory(!memory)}
-          />
-          🧠 Memorise previous answers for context in follow-up questions
-        </label>
-      </div>
-      {/* Privacy Policy */}
-      <details className="info-section">
-        <summary>🔒 Privacy Policy – Click to expand</summary>
-        <p>{content[language].privacy}</p>
-      </details>
-      {/* FAQ Section */}
-      <details className="info-section">
-        <summary>❓ FAQ – Click to expand</summary>
-        <ul>
-          {content[language].faq.map((item, idx) => (
-            <li key={idx}><strong>Q:</strong> {item.q}<br /><strong>A:</strong> {item.a}</li>
-          ))}
-        </ul>
-      </details>
-    </div>
-  );
+  <details className="info-section">
+    <summary>❓ FAQ – Click to expand</summary>
+    <ul>
+      {content[language].faq.map((item, idx) => (
+        <li key={idx}>
+          <strong>Q:</strong> {item.q}
+          <br />
+          <strong>A:</strong> {item.a}
+        </li>
+      ))}
+    </ul>
+  </details>
+</div> {/* ✅ Closes app-container */}
+);
 }
+
 export default App;
