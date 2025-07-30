@@ -11,6 +11,11 @@ function App() {
   const [memory, setMemory] = useState(false);
   const [answer, setAnswer] = useState('');
 
+  const [isLongTerm, setIsLongTerm] = useState(false);
+  const [durationDays, setDurationDays] = useState(7); // Default 7 days
+  const [reminderDrug, setReminderDrug] = useState('');
+  const [reminderTime, setReminderTime] = useState('');
+
  useEffect(() => {
   requestPermissionAndGetToken();
 
@@ -129,6 +134,70 @@ setAnswer(data.reply || "⚠️ No response received.");
         <p>{answer}</p>
       </div>
     )}
+<div className="reminder-form">
+  <h3>⏰ Set a Medication Reminder</h3>
+
+  <div className="form-group">
+    <label>💊 Medicine Name:</label>
+    <input
+      type="text"
+      placeholder="e.g. Amoxicillin"
+      value={reminderDrug}
+      onChange={(e) => setReminderDrug(e.target.value)}
+    />
+  </div>
+
+  <div className="form-group">
+    <label>⏰ Reminder Time:</label>
+    <input
+      type="time"
+      value={reminderTime}
+      onChange={(e) => setReminderTime(e.target.value)}
+    />
+  </div>
+
+  <div className="form-group">
+    <label>
+      <input
+        type="checkbox"
+        checked={isLongTerm}
+        onChange={() => setIsLongTerm(!isLongTerm)}
+      />
+      📆 Long Term Medication
+    </label>
+  </div>
+
+  {!isLongTerm && (
+    <div className="form-group">
+      <label>📅 Duration (days):</label>
+      <input
+        type="number"
+        min="1"
+        max="20"
+        value={durationDays}
+        onChange={(e) => setDurationDays(Number(e.target.value))}
+      />
+    </div>
+  )}
+
+  <button
+    className="send-button"
+    onClick={() => {
+      console.log("💾 Saving reminder:", {
+        reminderDrug,
+        reminderTime,
+        isLongTerm,
+        durationDays: isLongTerm ? 'Long Term' : durationDays,
+      });
+      alert(`✅ Reminder saved for ${reminderDrug}!`);
+    }}
+  >
+    Save Reminder
+  </button>
+</div>
+
+
+
       <p className="warning">
         ⚠️ <strong>Pill-AI is a prototype for testing purposes only and MUST NOT be relied upon for health advice.</strong>
         Please contact your doctor or pharmacist if you have any questions about your health or medications.
