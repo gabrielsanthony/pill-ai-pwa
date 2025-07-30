@@ -135,7 +135,7 @@ useEffect(() => {
       });
 
       const result = await response.json();
-      setAnswer(result.reply);
+      setAnswer(result.answer);
       setShowReminderForm(false); // Reset in case they ask a new question
     } catch (err) {
       console.error(err);
