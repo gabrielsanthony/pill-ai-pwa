@@ -4,6 +4,18 @@ import logo from './assets/pill-ai-logo.png'; // ✅ Updated image import
 import { requestPermissionAndGetToken } from './firebase-notifications';
 import { onMessage, getMessaging } from 'firebase/messaging'; // already there
 
+// 🔍 Extract first medicine-like word
+function extractMedicineName(text) {
+  const match = text.match(/(?:take|use|about|for)\s+([A-Za-z0-9\-]+)/i);
+  return match ? match[1] : '';
+}
+
+// 📅 Extract "for X days"
+function extractDuration(text) {
+  const match = text.match(/for (\d+) days?/i);
+  return match ? parseInt(match[1]) : null;
+}
+
 function App() {
   const [language, setLanguage] = useState('English');
   const [question, setQuestion] = useState('');
@@ -15,6 +27,10 @@ function App() {
   const [durationDays, setDurationDays] = useState(7); // Default 7 days
   const [reminderDrug, setReminderDrug] = useState('');
   const [reminderTime, setReminderTime] = useState('');
+
+  const [showReminderForm, setShowReminderForm] = useState(false);
+  const [timesPerDay, setTimesPerDay] = useState(1);
+  const [dailyTimes, setDailyTimes] = useState(['']);
 
  useEffect(() => {
   requestPermissionAndGetToken();
@@ -119,7 +135,20 @@ function App() {
 });
 
 const data = await response.json();
-setAnswer(data.reply || "⚠️ No response received.");
+const reply = data.reply || "⚠️ No response received.";
+setAnswer(reply);
+setShowReminderForm(true);
+
+// 🧠 Extract and set drug name and duration
+const med = extractMedicineName(reply);
+if (med) setReminderDrug(med);
+
+const days = extractDuration(reply);
+if (days) {
+  setIsLongTerm(false); // Ensure the duration input is shown
+  setDurationDays(days);
+}
+setShowReminderForm(true); // 👈 show the reminder button
 
   } catch (err) {
     console.error(err);
@@ -130,11 +159,24 @@ setAnswer(data.reply || "⚠️ No response received.");
       Send
     </button>
     {answer && (
-      <div className="answer-box">
-        <strong>💬 Answer:</strong>
-        <p>{answer}</p>
-      </div>
+  <>
+    <div className="answer-box">
+      <strong>💬 Answer:</strong>
+      <p>{answer}</p>
+    </div>
+
+    {!showReminderForm && (
+      <button
+        className="send-button"
+        onClick={() => setShowReminderForm(true)}
+      >
+        ➕ Set a Reminder
+      </button>
     )}
+  </>
+)}
+
+{showReminderForm && (
 <div className="reminder-form">
   <h3>⏰ Set a Medication Reminder</h3>
 
@@ -147,6 +189,7 @@ setAnswer(data.reply || "⚠️ No response received.");
       onChange={(e) => setReminderDrug(e.target.value)}
     />
   </div>
+  
 
   <div className="form-group">
     <label>⏰ Reminder Time:</label>
@@ -181,6 +224,37 @@ setAnswer(data.reply || "⚠️ No response received.");
     </div>
   )}
 
+<div className="form-group">
+  <label>🔁 Times per Day:</label>
+  <select
+    value={timesPerDay}
+    onChange={(e) => {
+      const newTimes = parseInt(e.target.value);
+      setTimesPerDay(newTimes);
+      setDailyTimes(Array(newTimes).fill(''));
+    }}
+  >
+    {[1, 2, 3, 4].map((num) => (
+      <option key={num} value={num}>{num}</option>
+    ))}
+  </select>
+</div>
+
+{dailyTimes.map((time, idx) => (
+  <div className="form-group" key={idx}>
+    <label>🕒 Time {idx + 1}:</label>
+    <input
+      type="time"
+      value={time}
+      onChange={(e) => {
+        const updated = [...dailyTimes];
+        updated[idx] = e.target.value;
+        setDailyTimes(updated);
+      }}
+    />
+  </div>
+))}
+
   <button
     className="send-button"
     onClick={() => {
@@ -196,7 +270,7 @@ setAnswer(data.reply || "⚠️ No response received.");
     Save Reminder
   </button>
 </div>
-
+)}
 
 
       <p className="warning">
