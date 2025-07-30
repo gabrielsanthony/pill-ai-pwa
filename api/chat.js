@@ -31,9 +31,9 @@ export default async function handler(req, res) {
     const data = await openaiRes.json();
 
     if (data.choices?.[0]?.message?.content) {
-      res.status(200).json({ reply: data.choices[0].message.content });
+      res.status(200).json({ answer: data.choices[0].message.content });
     } else {
-      res.status(200).json({ reply: "⚠️ No response received." });
+      res.status(200).json({ answer: "⚠️ No response received." });
     }
   } catch (error) {
     console.error("Error contacting OpenAI:", error);

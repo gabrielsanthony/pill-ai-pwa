@@ -1,8 +1,6 @@
-// api/scheduleReminder.js
-import { NextResponse } from 'next/server';
 import admin from 'firebase-admin';
 
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON); // already in Vercel secrets
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
 
 if (!admin.apps.length) {
   admin.initializeApp({
@@ -10,8 +8,12 @@ if (!admin.apps.length) {
   });
 }
 
-export async function POST(req) {
-  const { title, body, token } = await req.json();
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const { title, body, token } = req.body;
 
   try {
     const message = {
@@ -23,9 +25,9 @@ export async function POST(req) {
     };
 
     const response = await admin.messaging().send(message);
-    return NextResponse.json({ success: true, response });
+    return res.status(200).json({ success: true, response });
   } catch (err) {
     console.error('❌ Error sending push notification:', err);
-    return NextResponse.json({ success: false, error: err.message });
+    return res.status(500).json({ success: false, error: err.message });
   }
 }
