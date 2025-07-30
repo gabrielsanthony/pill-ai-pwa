@@ -255,7 +255,7 @@ useEffect(() => {
       ⚠️ <strong>Pill-AI is a prototype for testing purposes only and MUST NOT be relied upon for health advice.</strong>
       Please contact your doctor or pharmacist if you have any questions about your health or medications.
     </p>
-  </div> {/* ✅ Closes reminder-form */}
+  </div>
 )}
 
   {/* ✅ Always visible – these are OUTSIDE the reminder form */}
@@ -295,7 +295,7 @@ useEffect(() => {
       ))}
     </ul>
   </details>
-</div> {/* ✅ Closes app-container */}
+</div> 
 );
 }
 
