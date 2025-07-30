@@ -24,10 +24,16 @@ export default async function handler(req, res) {
       },
     };
 
+    console.log('📤 Sending notification to token:', token);
+    console.log('📨 Message payload:', message);
+
     const response = await admin.messaging().send(message);
     return res.status(200).json({ success: true, response });
-  } catch (err) {
-    console.error('❌ Error sending push notification:', err);
-    return res.status(500).json({ success: false, error: err.message });
-  }
+} catch (err) {
+  console.error('❌ Error sending push notification:', err);
+
+return res.status(500).json({
+  success: false,
+  error: err.message || 'Unknown error'
+});
 }

@@ -267,13 +267,13 @@ useEffect(() => {
           });
 
           const result = await response.json();
+          console.log("🔍 Reminder API response:", result);
 
-          if (result.success) {
-            alert(`✅ Notification sent for ${reminderDrug}`);
-          } else {
-            console.error(result.error);
-            alert("❌ Failed to send notification");
-          }
+        if (result.success) {
+          alert(`✅ Notification sent for ${reminderDrug}`);
+        } else {
+          alert("❌ Failed to send notification: " + result.error);
+        }
         } catch (err) {
           console.error(err);
           alert("❌ Error while saving reminder");
