@@ -20,7 +20,7 @@ function App() {
     alert("🔔 Foreground push: " + payload.notification?.body); // optional
     new Notification(payload.notification?.title || "Pill-AI", {
   body: payload.notification?.body,
-  icon: '/pill-ai-logo.png',
+  icon: logo,
 });
   });
 }, []);
