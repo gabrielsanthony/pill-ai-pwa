@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import logo from './assets/pill-ai-logo.png'; // ✅ Updated image import
-import { requestPermissionAndGetToken } from './firebase-notifications';
+import { requestPermissionAndGetToken, messaging } from './firebase-notifications';
+import { onMessage } from 'firebase/messaging';
 
 function App() {
   const [language, setLanguage] = useState('English');
@@ -10,9 +11,18 @@ function App() {
   const [memory, setMemory] = useState(false);
   const [answer, setAnswer] = useState('');
 
-  useEffect(() => {
-    requestPermissionAndGetToken();
-  }, []);
+ useEffect(() => {
+  requestPermissionAndGetToken();
+
+  // Foreground notifications
+  onMessage(messaging, (payload) => {
+    console.log("📥 Foreground message received:", payload);
+    new Notification(payload.notification?.title || "Pill-AI", {
+  body: payload.notification?.body,
+  icon: '/pill-ai-logo.png',
+});
+  });
+}, []);
 
   const content = {
     English: {
