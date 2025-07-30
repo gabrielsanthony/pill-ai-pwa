@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import logo from './assets/pill-ai-logo.png'; // ✅ Updated image import
-import { requestPermissionAndGetToken, messaging } from './firebase-notifications';
-import { onMessage } from 'firebase/messaging';
+import { requestPermissionAndGetToken } from './firebase-notifications';
+import { onMessage, getMessaging } from 'firebase/messaging'; // already there
 
 function App() {
   const [language, setLanguage] = useState('English');
@@ -20,6 +20,7 @@ function App() {
   requestPermissionAndGetToken();
 
   // Foreground notifications
+  const messaging = getMessaging();
   onMessage(messaging, (payload) => {
     console.log("📥 Foreground message received:", payload);
     alert("🔔 Foreground push: " + payload.notification?.body); // optional
