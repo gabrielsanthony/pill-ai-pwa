@@ -38,6 +38,8 @@ function extractMedicineName(text) {
   const [timesPerDay, setTimesPerDay] = useState(1);
   const [dailyTimes, setDailyTimes] = useState(['']);
 
+
+
 // ⬇️ ADD THIS BELOW your first useEffect block
 useEffect(() => {
   if (answer) {
@@ -48,6 +50,29 @@ useEffect(() => {
     if (duration) setDurationDays(duration);
   }
 }, [answer]);
+
+// ✅ Automatically request permission + save push token on app load
+useEffect(() => {
+  const setupNotifications = async () => {
+    const token = await requestPermissionAndGetToken();
+    if (token) {
+      const res = await fetch('/api/savePushToken', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token }),
+      });
+
+      const result = await res.json();
+      console.log('📦 Push token saved:', result);
+    } else {
+      console.warn('❌ No push token available');
+    }
+  };
+
+  setupNotifications();
+}, []);
 
   const content = {
     English: {
