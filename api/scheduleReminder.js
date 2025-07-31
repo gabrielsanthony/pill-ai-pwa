@@ -1,13 +1,18 @@
 // /api/scheduleReminder.js
 import admin from 'firebase-admin';
 
+// Parse service account
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
 
+// Initialize Firebase Admin only once
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
   });
 }
+
+// Import Firestore
+const db = admin.firestore();
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -20,35 +25,23 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
-  const sendTime = new Date(sendAt).getTime();
-  const now = Date.now();
-  const delay = sendTime - now;
+  try {
+    const docRef = await db.collection('scheduledReminders').add({
+      token,
+      title,
+      body,
+      sendAt: new Date(sendAt),
+      sent: false,
+      createdAt: new Date(),
+    });
 
-  console.log('⏳ Scheduling push in', delay, 'ms');
-
-  if (delay < 0) {
-    return res.status(400).json({ error: 'Scheduled time is in the past' });
+    return res.status(200).json({
+      success: true,
+      id: docRef.id,
+      scheduledAt: sendAt,
+    });
+  } catch (err) {
+    console.error('❌ Firestore error:', err);
+    return res.status(500).json({ success: false, error: err.message });
   }
-
-  // Use setTimeout to delay the sending
-  setTimeout(async () => {
-    try {
-      const message = {
-        token,
-        notification: { title, body },
-      };
-
-      const response = await admin.messaging().send(message);
-      console.log('✅ Delayed notification sent:', response);
-    } catch (err) {
-      console.error('❌ Error sending delayed push:', err);
-    }
-  }, delay);
-
-  // Respond immediately so frontend doesn't hang
-  return res.status(200).json({
-    success: true,
-    scheduledIn: delay,
-    sendAt,
-  });
 }
