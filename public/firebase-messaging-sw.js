@@ -15,6 +15,7 @@ const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage(function(payload) {
   console.log('[firebase-messaging-sw.js] Background message received:', payload);
+  
   const notificationTitle = payload.notification?.title || 'Pill-AI Reminder';
   const notificationOptions = {
     body: payload.notification?.body || 'You have a medication to take!',
