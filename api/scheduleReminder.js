@@ -1,3 +1,4 @@
+// /api/scheduleReminder.js
 import admin from 'firebase-admin';
 
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
@@ -13,28 +14,41 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { title, body, token } = req.body;
+  const { title, body, token, sendAt } = req.body;
 
-  try {
-    const message = {
-      token,
-      notification: {
-        title,
-        body,
-      },
-    };
+  if (!token || !title || !body || !sendAt) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
 
-    console.log('📤 Sending notification to token:', token);
-    console.log('📨 Message payload:', message);
+  const sendTime = new Date(sendAt).getTime();
+  const now = Date.now();
+  const delay = sendTime - now;
 
-    const response = await admin.messaging().send(message);
-    return res.status(200).json({ success: true, response });
-} catch (err) {
-  console.error('❌ Error sending push notification:', err);
+  console.log('⏳ Scheduling push in', delay, 'ms');
 
-return res.status(500).json({
-  success: false,
-  error: err.message || 'Unknown error'
-});
-}
+  if (delay < 0) {
+    return res.status(400).json({ error: 'Scheduled time is in the past' });
+  }
+
+  // Use setTimeout to delay the sending
+  setTimeout(async () => {
+    try {
+      const message = {
+        token,
+        notification: { title, body },
+      };
+
+      const response = await admin.messaging().send(message);
+      console.log('✅ Delayed notification sent:', response);
+    } catch (err) {
+      console.error('❌ Error sending delayed push:', err);
+    }
+  }, delay);
+
+  // Respond immediately so frontend doesn't hang
+  return res.status(200).json({
+    success: true,
+    scheduledIn: delay,
+    sendAt,
+  });
 }
