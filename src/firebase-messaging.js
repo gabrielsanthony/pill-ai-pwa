@@ -19,7 +19,7 @@ const firebaseConfig = {
                   const permission = await Notification.requestPermission();
                       if (permission === 'granted') {
                             const token = await getToken(messaging, {
-                                    vapidKey: 'BB12zXeJSqQ73BnhGfMBQWsc5ww-1p_Ftaf8zcYeoKWXrbD9e2h2nzibSlOuqWNkJDeK3nrCHlkYJOQ5CufuVys',
+                                    vapidKey: 'BMezexq4S4zz4jkejASOtjwWwMDN6jHeLCi2iUdBEAeTcV70XHvNkDLCd84cSfB1Tu-FgMXqVtik5Xb7uUILciA',
                                     serviceWorkerRegistration: await navigator.serviceWorker.register('/firebase-messaging-sw.js'),
                                           });
                                                 console.log('✅ Push token:', token);
