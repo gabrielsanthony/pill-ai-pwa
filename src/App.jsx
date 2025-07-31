@@ -277,25 +277,9 @@ useEffect(() => {
             return;
           }
 
-          const firstTime = dailyTimes[0] || "09:00";
-
-// Convert the selected time (e.g., "14:30") to a future timestamp
-const [hour, minute] = firstTime.split(':').map(Number);
-const now = new Date();
-const scheduled = new Date(
-  now.getFullYear(),
-  now.getMonth(),
-  now.getDate(),
-  hour,
-  minute,
-  0,
-  0
-);
-
-// If the selected time has already passed today, schedule for tomorrow
-if (scheduled <= now) {
-  scheduled.setDate(scheduled.getDate() + 1);
-}
+         
+          const now = new Date();
+          const scheduled = new Date(now.getTime() + 20000); // 20 seconds from now
 
 const sendAt = scheduled.toISOString(); // convert to string
 
