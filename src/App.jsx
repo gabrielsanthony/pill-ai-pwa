@@ -279,17 +279,38 @@ useEffect(() => {
 
           const firstTime = dailyTimes[0] || "09:00";
 
-          const response = await fetch("/api/scheduleReminder", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              token,
-              title: `🕒 Pill Reminder: ${reminderDrug}`,
-              body: `Take ${reminderDrug} at ${firstTime}`,
-            }),
-          });
+// Convert the selected time (e.g., "14:30") to a future timestamp
+const [hour, minute] = firstTime.split(':').map(Number);
+const now = new Date();
+const scheduled = new Date(
+  now.getFullYear(),
+  now.getMonth(),
+  now.getDate(),
+  hour,
+  minute,
+  0,
+  0
+);
+
+// If the selected time has already passed today, schedule for tomorrow
+if (scheduled <= now) {
+  scheduled.setDate(scheduled.getDate() + 1);
+}
+
+const sendAt = scheduled.toISOString(); // convert to string
+
+const response = await fetch("/api/scheduleReminder", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    token,
+    title: `🕒 Pill Reminder: ${reminderDrug}`,
+    body: `Take ${reminderDrug} at ${firstTime}`,
+    sendAt, // send this to backend
+  }),
+});
 
           const result = await response.json();
           console.log("🔍 Reminder API response:", result);
