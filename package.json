@@ -11,8 +11,13 @@
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"
   },
+
+   // Blank line for redeoployment
+
+
   "dependencies": {
     "firebase": "^12.0.0",
+    "firebase-admin": "^13.4.0",
     "fuse.js": "^7.1.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
