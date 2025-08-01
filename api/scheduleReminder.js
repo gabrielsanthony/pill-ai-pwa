@@ -1,11 +1,21 @@
 import { getFirestore } from 'firebase-admin/firestore';
-import { initializeApp, applicationDefault } from 'firebase-admin/app';
+import { initializeApp, cert, getApps } from 'firebase-admin/app';
 
-const app = initializeApp({
-  credential: applicationDefault(), // or your service account
-});
+const serviceAccountJson = process.env.FIREBASE_PRIVATE_KEY_JSON;
 
-const db = getFirestore(app);
+if (!serviceAccountJson) {
+  throw new Error('FIREBASE_PRIVATE_KEY_JSON environment variable is not set');
+}
+
+const serviceAccount = JSON.parse(serviceAccountJson);
+
+if (!getApps().length) {
+  initializeApp({
+    credential: cert(serviceAccount),
+  });
+}
+
+const db = getFirestore();
 
 export default async function handler(req, res) {
   if (req.method === 'POST') {
