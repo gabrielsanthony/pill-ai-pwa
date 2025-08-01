@@ -76,7 +76,7 @@ useEffect(() => {
 
   const content = {
     English: {
-      privacy: `Pill-AI does not collect or store any personal data. All interactions are processed anonymously. Please consult a healthcare professional for any medical concerns.`,
+      privacy: "Pill-AI does not collect or store any personal data. All interactions are processed anonymously. Please consult a healthcare professional for any medical concerns.",
       faq: [
         { q: 'Can I trust Pill-AI?', a: 'Pill-AI uses official NZ medicine data but is only a prototype.' },
         { q: 'Does it store my data?', a: 'No, it processes your questions anonymously.' },
@@ -84,7 +84,7 @@ useEffect(() => {
       ]
     },
     'Te Reo Māori': {
-      privacy: `Kāore a Pill-AI e kohikohi, e pupuri rānei i ngā raraunga whaiaro. Ka mahia ā-tūmataiti ngā pātai katoa. Tēnā tirohia tētahi rata mō ngā āwangawanga hauora.`,
+      privacy: "Kāore a Pill-AI e kohikohi, e pupuri rānei i ngā raraunga whaiaro. Ka mahia ā-tūmataiti ngā pātai katoa. Tēnā tirohia tētahi rata mō ngā āwangawanga hauora.",
       faq: [
         { q: 'Ka taea e au te whakawhirinaki ki a Pill-AI?', a: 'He raraunga rongoā whaimana nō Aotearoa e whakamahia ana, engari he tauira anake tēnei.' },
         { q: 'Ka penapena raraunga taku?', a: 'Kāo. Ka whakahaeretia ā-tūmataiti ngā pātai.' },
@@ -92,7 +92,7 @@ useEffect(() => {
       ]
     },
     Samoan: {
-      privacy: `E le aoina pe teu e Pill-AI ni faamatalaga patino. E faagasolo uma fesili i se auala e le mafai ona iloa ai se tagata. Faamolemole fesili i se foma’i pe afai e iai ni ou popolega tau le soifua maloloina.`,
+      privacy: "E le aoina pe teu e Pill-AI ni faamatalaga patino. E faagasolo uma fesili i se auala e le mafai ona iloa ai se tagata. Faamolemole fesili i se foma’i pe afai e iai ni ou popolega tau le soifua maloloina.",
       faq: [
         { q: 'E mafai ona ou faatuatuaina le Pill-AI?', a: 'O lo’o fa’aaoga ai faamatalaga aloa’ia i Niu Sila ae o se fa’ata’ita’iga lea.' },
         { q: 'E teu ai a’u faamatalaga?', a: 'Leai. E faagasolo i se auala e le mafai ona iloa ai.' },
@@ -100,7 +100,7 @@ useEffect(() => {
       ]
     },
     Mandarin: {
-      privacy: `Pill-AI 不会收集或存储任何个人数据。所有互动都是匿名处理的。如有健康问题，请咨询医生或药剂师。`,
+      privacy: "Pill-AI 不会收集或存储任何个人数据。所有互动都是匿名处理的。如有健康问题，请咨询医生或药剂师",
       faq: [
         { q: '我可以信任 Pill-AI 吗？', a: 'Pill-AI 使用的是新西兰官方药品信息，但目前仅是一个原型。' },
         { q: '它会存储我的数据吗？', a: '不会，所有问题都是匿名处理的。' },
@@ -290,8 +290,8 @@ const response = await fetch("/api/scheduleReminder", {
   },
   body: JSON.stringify({
     token,
-    title: `🕒 Pill Reminder: ${reminderDrug}`,
-    body: `Take ${reminderDrug} at ${firstTime}`,
+    title: `🕒 Pill Reminder: ${reminderDrug}`
+    body: `Take ${reminderDrug} at ${dailyTimes[0] || 'scheduled time'}`,
     sendAt, // send this to backend
   }),
 });
@@ -343,7 +343,7 @@ const response = await fetch("/api/scheduleReminder", {
 
   <details className="info-section">
     <summary>🔒 Privacy Policy – Click to expand</summary>
-    <p>{content[language].privacy}</p>
+   <p>{content[language]?.privacy || content["English"].privacy}</p>
   </details>
 
   <details className="info-section">
