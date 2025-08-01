@@ -10,21 +10,29 @@ const db = getFirestore(app);
 export default async function handler(req, res) {
   if (req.method === 'POST') {
     try {
-      const { reminderDrug, isLongTerm, durationDays, timesPerDay, dailyTimes } = req.body;
+      const { token, title, body, sendAt } = req.body;
 
-      const docRef = await db.collection('reminders').add({
-        reminderDrug,
-        isLongTerm,
-        durationDays,
-        timesPerDay,
-        dailyTimes,
+      // 🔍 Validate input
+      if (!token || !title || !body || !sendAt) {
+        return res.status(400).json({
+          success: false,
+          message: 'Missing one or more required fields: token, title, body, sendAt',
+        });
+      }
+
+      // 📝 Save valid data to Firestore
+      const docRef = await db.collection('scheduledReminders').add({
+        token,
+        title,
+        body,
+        sendAt,
         createdAt: new Date(),
       });
 
       res.status(200).json({ success: true, id: docRef.id });
     } catch (error) {
-      console.error('Reminder save error:', error);
-       res.status(500).json({
+      console.error('🔥 Reminder save error:', error);
+      res.status(500).json({
         success: false,
         message: 'Error saving reminder',
         error: error.message,
