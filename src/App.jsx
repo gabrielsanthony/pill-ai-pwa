@@ -290,7 +290,7 @@ const response = await fetch("/api/scheduleReminder", {
   },
   body: JSON.stringify({
     token,
-    title: `🕒 Pill Reminder: ${reminderDrug}`
+    title: `🕒 Pill Reminder: ${reminderDrug}`,
     body: `Take ${reminderDrug} at ${dailyTimes[0] || 'scheduled time'}`,
     sendAt, // send this to backend
   }),
