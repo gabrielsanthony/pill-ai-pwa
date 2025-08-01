@@ -1,47 +1,38 @@
-// /api/scheduleReminder.js
-import admin from 'firebase-admin';
+import { getFirestore } from 'firebase-admin/firestore';
+import { initializeApp, applicationDefault } from 'firebase-admin/app';
 
-// Parse service account
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+const app = initializeApp({
+  credential: applicationDefault(), // or your service account
+});
 
-// Initialize Firebase Admin only once
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-  });
-}
-
-// Import Firestore
-const db = admin.firestore();
+const db = getFirestore(app);
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  if (req.method === 'POST') {
+    try {
+      const { reminderDrug, isLongTerm, durationDays, timesPerDay, dailyTimes } = req.body;
 
-  const { title, body, token, sendAt } = req.body;
+      const docRef = await db.collection('reminders').add({
+        reminderDrug,
+        isLongTerm,
+        durationDays,
+        timesPerDay,
+        dailyTimes,
+        createdAt: new Date(),
+      });
 
-  if (!token || !title || !body || !sendAt) {
-    return res.status(400).json({ error: 'Missing required fields' });
-  }
-
-  try {
-    const docRef = await db.collection('scheduledReminders').add({
-      token,
-      title,
-      body,
-      sendAt: new Date(sendAt),
-      sent: false,
-      createdAt: new Date(),
-    });
-
-    return res.status(200).json({
-      success: true,
-      id: docRef.id,
-      scheduledAt: sendAt,
-    });
-  } catch (err) {
-    console.error('❌ Firestore error:', err);
-    return res.status(500).json({ success: false, error: err.message });
+      res.status(200).json({ success: true, id: docRef.id });
+    } catch (error) {
+      console.error('Reminder save error:', error);
+       res.status(500).json({
+        success: false,
+        message: 'Error saving reminder',
+        error: error.message,
+        stack: error.stack,
+        code: error.code,
+      });
+    }
+  } else {
+    res.status(405).json({ success: false, message: 'Method Not Allowed' });
   }
 }
