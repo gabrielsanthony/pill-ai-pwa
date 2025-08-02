@@ -279,9 +279,16 @@ useEffect(() => {
 
          
           const now = new Date();
-          const scheduled = new Date(now.getTime() + 20000); // 20 seconds from now
+const [hour, minute] = dailyTimes[0].split(":").map(Number);
+const scheduled = new Date(now);
+scheduled.setHours(hour, minute, 0, 0);
 
-const sendAt = scheduled.toISOString(); // convert to string
+// If the selected time has already passed today, send it tomorrow instead
+if (scheduled < now) {
+  scheduled.setDate(scheduled.getDate() + 1);
+}
+
+const sendAt = scheduled.toISOString();
 
 const response = await fetch("/api/scheduleReminder", {
   method: "POST",
