@@ -1,6 +1,8 @@
 import { getFirestore } from 'firebase-admin/firestore';
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getMessaging } from 'firebase-admin/messaging'; // ✅ add this line
+import { Timestamp } from 'firebase-admin/firestore';
+
 
 const serviceAccountJson = process.env.FIREBASE_PRIVATE_KEY_JSON;
 
@@ -38,7 +40,7 @@ export default async function handler(req, res) {
         token,
         title,
         body,
-        sendAt: new Date(sendAt),
+        sendAt: Timestamp.fromDate(new Date(sendAt)),
         createdAt: new Date(),
         sent: false, // 🧠 required so your scheduler doesn't skip it
       });
