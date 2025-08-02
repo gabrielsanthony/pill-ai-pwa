@@ -38,7 +38,7 @@ export default async function handler(req, res) {
         token,
         title,
         body,
-        sendAt,
+        sendAt: new Date(sendAt),
         createdAt: new Date(),
         sent: false, // 🧠 required so your scheduler doesn't skip it
       });
