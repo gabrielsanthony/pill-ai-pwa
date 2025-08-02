@@ -1,5 +1,6 @@
 import { getFirestore } from 'firebase-admin/firestore';
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
+import { getMessaging } from 'firebase-admin/messaging'; // ✅ add this line
 
 const serviceAccountJson = process.env.FIREBASE_PRIVATE_KEY_JSON;
 
@@ -19,6 +20,8 @@ const db = getFirestore();
 
 export default async function handler(req, res) {
   if (req.method === 'POST') {
+    console.log('📥 Received POST request to /api/scheduleReminder'); // 👈 ADD THIS
+
     try {
       const { token, title, body, sendAt } = req.body;
 
@@ -38,6 +41,23 @@ export default async function handler(req, res) {
         sendAt,
         createdAt: new Date(),
       });
+
+      // ✅ Send immediate push notification (for testing)
+      const message = {
+        token,
+        notification: {
+          title,
+          body,
+        },
+      };
+
+      try {
+        console.log('📦 Sending push notification with title:', title); // 👈 ADD THIS
+        const response = await getMessaging().send(message);
+        console.log('✅ Push sent:', response);
+      } catch (pushError) {
+        console.error('❌ Push send error:', pushError);
+      }
 
       res.status(200).json({ success: true, id: docRef.id });
     } catch (error) {
