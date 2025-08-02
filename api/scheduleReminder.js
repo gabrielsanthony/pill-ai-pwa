@@ -40,24 +40,8 @@ export default async function handler(req, res) {
         body,
         sendAt,
         createdAt: new Date(),
+        sent: false, // 🧠 required so your scheduler doesn't skip it
       });
-
-      // ✅ Send immediate push notification (for testing)
-      const message = {
-        token,
-        notification: {
-          title,
-          body,
-        },
-      };
-
-      try {
-        console.log('📦 Sending push notification with title:', title); // 👈 ADD THIS
-        const response = await getMessaging().send(message);
-        console.log('✅ Push sent:', response);
-      } catch (pushError) {
-        console.error('❌ Push send error:', pushError);
-      }
 
       res.status(200).json({ success: true, id: docRef.id });
     } catch (error) {
