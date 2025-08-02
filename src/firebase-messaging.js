@@ -35,5 +35,14 @@ const firebaseConfig = {
                                                                                       };
 
                                                                                       onMessage(messaging, (payload) => {
-                                                                                        console.log('🔔 Foreground push received:', payload);
-                                                                                        });
+                                                                                        console.log('📩 Foreground message received:', payload);
+
+                                                                                        if (Notification.permission === 'granted') {
+                                                                                          const { title, body } = payload.notification;
+
+                                                                                          new Notification(title, {
+                                                                                            body,
+                                                                                            requireInteraction: true, // ✅ Keeps it visible until dismissed
+                                                                                          });
+                                                                                        }
+                                                                                      });
