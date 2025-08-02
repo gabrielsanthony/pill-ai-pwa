@@ -35,20 +35,30 @@ const firebaseConfig = {
                                                                                       };
 
                                                                                      onMessage(messaging, (payload) => {
-  console.log('📩 Foreground message received:', payload);
+                                                                                      console.log('📩 Foreground message received:', payload);
 
-  if (Notification.permission === 'granted') {
-    if (payload?.notification?.title && payload?.notification?.body) {
-      const { title, body } = payload.notification;
+                                                                                      if (Notification.permission === 'granted') {
+                                                                                        const { notification } = payload;
 
-      new Notification(title, {
-        body,
-        requireInteraction: true,
-      });
-    } else {
-      console.warn('❗ Payload missing notification title or body:', payload);
-    }
-  } else {
-    console.warn('❌ Notification permission not granted at display time.');
-  }
-});
+                                                                                        if (notification?.title && notification?.body) {
+                                                                                          console.log('🧠 Attempting to display foreground notification');
+                                                                                          try {
+                                                                                            const notif = new Notification(notification.title, {
+                                                                                              body: notification.body,
+                                                                                              requireInteraction: true,
+                                                                                            });
+
+                                                                                            notif.onclick = () => {
+                                                                                              console.log('👆 Notification clicked!');
+                                                                                              window.focus();
+                                                                                            };
+                                                                                          } catch (error) {
+                                                                                            console.error('❌ Failed to show Notification:', error);
+                                                                                          }
+                                                                                        } else {
+                                                                                          console.warn('❗ Missing title/body in payload:', payload);
+                                                                                        }
+                                                                                      } else {
+                                                                                        console.warn('❌ Notification permission not granted at display time.');
+                                                                                      }
+                                                                                    });
