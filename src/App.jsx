@@ -299,6 +299,15 @@ useEffect(() => {
     dailyTimes,
   });
 
+  // 🧠 Save reminder info locally for progress tracking
+const reminderInfo = {
+  medicine: reminderDrug,
+  days: isLongTerm ? 30 : durationDays,
+  timesPerDay: timesPerDay
+};
+localStorage.setItem("activeReminder", JSON.stringify(reminderInfo));
+console.log("🧠 Saved to localStorage:", reminderInfo);
+
   const token = await requestPermissionAndGetToken();
 
   if (!token) {
