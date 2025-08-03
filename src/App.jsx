@@ -406,11 +406,11 @@ localStorage.removeItem("medsTaken");
   {reminderDrug && durationDays > 0 && !isLongTerm && (
     <div className="progress-section">
       <h3>📈 Track Your Medication</h3>
-      <progress value={medsTaken} max={durationDays}></progress>
+      <progress value={medsTaken} max={durationDays * timesPerDay}></progress>
       <p>
-        {medsTaken} of {durationDays} doses marked as taken (
-        {Math.round((medsTaken / durationDays) * 100)}%)
+        {Math.round((medsTaken / (durationDays * timesPerDay)) * 100)}% of your meds journey completed
       </p>
+
       <button
         className="send-button"
         onClick={() => {
