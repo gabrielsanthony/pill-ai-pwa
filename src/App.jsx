@@ -38,6 +38,18 @@ function extractMedicineName(text) {
   const [timesPerDay, setTimesPerDay] = useState(1);
   const [dailyTimes, setDailyTimes] = useState(['']);
 
+  // 🧠 Restore reminder info from localStorage on load
+useEffect(() => {
+  const stored = localStorage.getItem("activeReminder");
+  if (stored) {
+    const { medicine, days, timesPerDay } = JSON.parse(stored);
+    console.log("🔄 Restoring reminder from localStorage:", { medicine, days, timesPerDay });
+    setReminderDrug(medicine);
+    setDurationDays(days);
+    setTimesPerDay(timesPerDay);
+    setDailyTimes(Array(timesPerDay).fill(''));
+  }
+}, []);
 
 
 // ⬇️ ADD THIS BELOW your first useEffect block

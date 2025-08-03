@@ -1,9 +1,12 @@
 // src/firebase-config.js
 import { initializeApp } from 'firebase/app';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
+import { getFirestore } from 'firebase/firestore';
+import { getAuth, signInAnonymously } from 'firebase/auth';
 
+// ✅ Your existing config
 const firebaseConfig = {
- apiKey: "AIzaSyD4IIK7DRJLGE5bKNe5J0W2ufbyUWsA4oc",
+  apiKey: "AIzaSyD4IIK7DRJLGE5bKNe5J0W2ufbyUWsA4oc",
   authDomain: "pill-ai-935d5.firebaseapp.com",
   projectId: "pill-ai-935d5",
   storageBucket: "pill-ai-935d5.appspot.com",
@@ -12,7 +15,24 @@ const firebaseConfig = {
   measurementId: "G-XPXEY3KPPS"
 };
 
+// ✅ Initialize Firebase
 const app = initializeApp(firebaseConfig);
+
+// 🔔 Messaging
 const messaging = getMessaging(app);
 
-export { messaging, getToken, onMessage };
+// 🔥 Firestore
+const db = getFirestore(app);
+
+// 👤 Auth
+const auth = getAuth(app);
+
+// 🚀 Anonymous sign-in (auto)
+signInAnonymously(auth).catch((error) => {
+  console.error("Anonymous sign-in error:", error);
+});
+
+export {
+  messaging, getToken, onMessage,  // notifications
+  db, auth                         // firestore + auth
+};
