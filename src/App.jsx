@@ -24,10 +24,21 @@ function extractMedicineName(text) {
 
         function App() {
           const [language, setLanguage] = useState('English');
-            const [question, setQuestion] = useState('');
-              const [simplify, setSimplify] = useState(false);
-                const [memory, setMemory] = useState(false);
-                  const [answer, setAnswer] = useState('');
+          const [question, setQuestion] = useState('');
+          const [simplify, setSimplify] = useState(false);
+          const [memory, setMemory] = useState(false);
+          const [answer, setAnswer] = useState('');
+
+          const [medsTaken, setMedsTaken] = useState(0);
+
+  // 🔁 Restore progress from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('medsTaken');
+    if (saved) {
+      setMedsTaken(Number(saved));
+    }
+  }, []);
+
 
   const [isLongTerm, setIsLongTerm] = useState(false);
   const [durationDays, setDurationDays] = useState(7); // Default 7 days
@@ -323,6 +334,10 @@ const reminderInfo = {
 localStorage.setItem("activeReminder", JSON.stringify(reminderInfo));
 console.log("🧠 Saved to localStorage:", reminderInfo);
 
+// 🧹 Reset medsTaken progress
+setMedsTaken(0);
+localStorage.removeItem("medsTaken");
+
   const token = await requestPermissionAndGetToken();
 
   if (!token) {
@@ -386,6 +401,29 @@ console.log("🧠 Saved to localStorage:", reminderInfo);
     </p>
   </div>
 )}
+
+  {/* ✅ Progress Tracking UI */}
+  {reminderDrug && durationDays > 0 && !isLongTerm && (
+    <div className="progress-section">
+      <h3>📈 Track Your Medication</h3>
+      <progress value={medsTaken} max={durationDays}></progress>
+      <p>
+        {medsTaken} of {durationDays} doses marked as taken (
+        {Math.round((medsTaken / durationDays) * 100)}%)
+      </p>
+      <button
+        className="send-button"
+        onClick={() => {
+          const newCount = medsTaken + 1;
+          setMedsTaken(newCount);
+          localStorage.setItem("medsTaken", newCount);
+        }}
+        disabled={medsTaken >= durationDays}
+      >
+        ✅ Meds Taken
+      </button>
+    </div>
+  )}
 
   {/* ✅ Always visible – these are OUTSIDE the reminder form */}
   <div className="toggles">
