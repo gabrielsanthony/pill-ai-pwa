@@ -31,6 +31,18 @@ function extractMedicineName(text) {
 
           const [medsTaken, setMedsTaken] = useState(0);
 
+          const [nextDoseTime, setNextDoseTime] = useState(null);
+          const [timeRemaining, setTimeRemaining] = useState('');
+
+            const [isLongTerm, setIsLongTerm] = useState(false);
+            const [durationDays, setDurationDays] = useState(7); // Default 7 days
+            const [reminderDrug, setReminderDrug] = useState('');
+            const [reminderTime, setReminderTime] = useState('');
+
+            const [showReminderForm, setShowReminderForm] = useState(false);
+            const [timesPerDay, setTimesPerDay] = useState(1);
+            const [dailyTimes, setDailyTimes] = useState(['']);
+
   // 🔁 Restore progress from localStorage
   useEffect(() => {
     const saved = localStorage.getItem('medsTaken');
@@ -39,15 +51,54 @@ function extractMedicineName(text) {
     }
   }, []);
 
+  useEffect(() => {
+  const reminder = JSON.parse(localStorage.getItem("activeReminder"));
+  if (!reminder || !reminder.days || !reminder.timesPerDay) return;
 
-  const [isLongTerm, setIsLongTerm] = useState(false);
-  const [durationDays, setDurationDays] = useState(7); // Default 7 days
-  const [reminderDrug, setReminderDrug] = useState('');
-  const [reminderTime, setReminderTime] = useState('');
+  const { days, timesPerDay } = reminder;
+  const today = new Date();
+  const now = today.getTime();
 
-  const [showReminderForm, setShowReminderForm] = useState(false);
-  const [timesPerDay, setTimesPerDay] = useState(1);
-  const [dailyTimes, setDailyTimes] = useState(['']);
+  // Build all future dose times
+  const futureTimes = [];
+  for (let d = 0; d < days; d++) {
+    for (let t of dailyTimes) {
+      if (!t) continue;
+      const [hh, mm] = t.split(":").map(Number);
+      const dose = new Date();
+      dose.setDate(today.getDate() + d);
+      dose.setHours(hh, mm, 0, 0);
+      if (dose.getTime() > now) {
+        futureTimes.push(dose);
+      }
+    }
+  }
+
+  if (futureTimes.length > 0) {
+    const next = futureTimes.sort((a, b) => a - b)[0];
+    setNextDoseTime(next);
+  }
+}, [dailyTimes]);
+
+useEffect(() => {
+  if (!nextDoseTime) return;
+
+  const interval = setInterval(() => {
+    const now = new Date();
+    const diff = nextDoseTime - now;
+
+    if (diff <= 0) {
+      setTimeRemaining('');
+      clearInterval(interval);
+    } else {
+      const mins = Math.floor((diff / 1000 / 60) % 60);
+      const hrs = Math.floor((diff / 1000 / 60 / 60));
+      setTimeRemaining(`${hrs}h ${mins}m remaining`);
+    }
+  }, 1000);
+
+  return () => clearInterval(interval);
+}, [nextDoseTime]);
 
   // 🧠 Restore reminder info from localStorage on load
 
@@ -405,24 +456,25 @@ localStorage.removeItem("medsTaken");
   {/* ✅ Progress Tracking UI */}
   {reminderDrug && durationDays > 0 && !isLongTerm && (
     <div className="progress-section">
-      <h3>📈 Track Your Medication</h3>
-      <progress value={medsTaken} max={durationDays * timesPerDay}></progress>
-      <p>
-        {Math.round((medsTaken / (durationDays * timesPerDay)) * 100)}% of your meds journey completed
-      </p>
+  <h3>📈 Track Your Medication</h3>
+  <progress max="100" value={(medsTaken / (durationDays * timesPerDay)) * 100}></progress>
+  <p>{Math.floor((medsTaken / (durationDays * timesPerDay)) * 100)}% of your meds journey completed</p>
 
-      <button
-        className="send-button"
-        onClick={() => {
-          const newCount = medsTaken + 1;
-          setMedsTaken(newCount);
-          localStorage.setItem("medsTaken", newCount);
-        }}
-        disabled={medsTaken >= durationDays}
-      >
-        ✅ Meds Taken
-      </button>
-    </div>
+  {timeRemaining ? (
+    <p>⏳ Next dose in: <strong>{timeRemaining}</strong></p>
+  ) : (
+    <button
+      className="send-button"
+      onClick={() => {
+        const updated = medsTaken + 1;
+        setMedsTaken(updated);
+        localStorage.setItem("medsTaken", updated);
+      }}
+    >
+      ✅ Meds Taken
+    </button>
+  )}
+</div>
   )}
 
   {/* ✅ Always visible – these are OUTSIDE the reminder form */}
