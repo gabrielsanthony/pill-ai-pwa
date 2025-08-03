@@ -109,6 +109,7 @@ useEffect(() => {
     }
   };
   return (
+    <>
     <div className="app-container">
       <header className="header">
         <img
@@ -169,6 +170,34 @@ useEffect(() => {
   }}
 >
   Send
+</button>
+
+<button
+  className="cancel-button"
+  onClick={async () => {
+    const token = await requestPermissionAndGetToken();
+
+    if (!token) {
+      alert("❌ Could not get push token. Nothing was cancelled.");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/cancelReminders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+
+      const result = await res.json();
+      alert("🗑️ All reminders cancelled");
+    } catch (err) {
+      console.error("❌ Error cancelling reminders:", err);
+      alert("❌ Failed to cancel reminders");
+    }
+  }}
+>
+  🗑️ Cancel All Reminders
 </button>
 
     {answer && (
@@ -260,66 +289,72 @@ useEffect(() => {
 
     <button
       className="send-button"
+
       onClick={async () => {
-        console.log("💾 Saving reminder:", {
-          reminderDrug,
-          isLongTerm,
-          durationDays: isLongTerm ? 'Long Term' : durationDays,
-          timesPerDay,
-          dailyTimes,
+  console.log("💾 Saving reminder:", {
+    reminderDrug,
+    isLongTerm,
+    durationDays: isLongTerm ? 'Long Term' : durationDays,
+    timesPerDay,
+    dailyTimes,
+  });
+
+  const token = await requestPermissionAndGetToken();
+
+  if (!token) {
+    alert("❌ Could not get push token. Reminder not saved.");
+    return;
+  }
+
+  const remindersToSchedule = [];
+  const now = new Date();
+  const daysToSchedule = isLongTerm ? 30 : durationDays;
+
+  try {
+    for (let dayOffset = 0; dayOffset < daysToSchedule; dayOffset++) {
+      for (const time of dailyTimes) {
+        if (!time) continue;
+        const [hour, minute] = time.split(":").map(Number);
+        const scheduled = new Date(now);
+        scheduled.setDate(scheduled.getDate() + dayOffset);
+        scheduled.setHours(hour, minute, 0, 0);
+
+        if (scheduled > now) {
+          remindersToSchedule.push({
+            token,
+            title: `🕒 Pill Reminder: ${reminderDrug}`,
+            body: `Take ${reminderDrug} at ${time}`,
+            sendAt: scheduled.toISOString(),
+          });
+        }
+      }
+    }
+
+    for (const reminder of remindersToSchedule) {
+      try {
+        const response = await fetch("/api/scheduleReminder", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(reminder),
         });
 
-        try {
-          const token = await requestPermissionAndGetToken();
+        const result = await response.json();
+        console.log("✅ Reminder saved:", result);
+      } catch (err) {
+        console.error("❌ Failed to save reminder:", err);
+      }
+    }
 
-          if (!token) {
-            alert("❌ Could not get push token. Reminder not saved.");
-            return;
-          }
+    alert(`✅ ${remindersToSchedule.length} reminders scheduled for ${reminderDrug}`);
+  } catch (err) {
+    console.error("❌ Reminder scheduling error:", err);
+    alert("❌ Error while saving reminder");
+  }
+}}
 
-         
-          const now = new Date();
-const [hour, minute] = dailyTimes[0].split(":").map(Number);
-const scheduled = new Date(now);
-scheduled.setHours(hour, minute, 0, 0);
-
-// If the selected time has already passed today, send it tomorrow instead
-if (scheduled < now) {
-  scheduled.setDate(scheduled.getDate() + 1);
-}
-
-const sendAt = scheduled.toISOString();
-
-const response = await fetch("/api/scheduleReminder", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    token,
-    title: `🕒 Pill Reminder: ${reminderDrug}`,
-    body: `Take ${reminderDrug} at ${dailyTimes[0] || 'scheduled time'}`,
-    sendAt, // send this to backend
-  }),
-});
-
-          const result = await response.json();
-          console.log("🔍 Reminder API response:", result);
-
-        if (result.success) {
-          alert(`✅ Notification sent for ${reminderDrug}`);
-        } else {
-          alert("❌ Failed to send notification: " + result.error);
-        }
-        } catch (err) {
-          console.error(err);
-          alert("❌ Error while saving reminder");
-        }
-      }}
-    >
-      Save Reminder
-   
-    </button>
+>
+  Save Reminder
+</button>
 
     <p className="warning">
       ⚠️ <strong>Pill-AI is a prototype for testing purposes only and MUST NOT be relied upon for health advice.</strong>
@@ -365,7 +400,8 @@ const response = await fetch("/api/scheduleReminder", {
       ))}
     </ul>
   </details>
-</div> 
+ </div>
+  </>
 );
 }
 
