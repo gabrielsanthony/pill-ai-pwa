@@ -32,6 +32,6 @@ export const requestPermissionAndGetToken = async () => {
 };
 
 // Optional: handle foreground messages
-onMessage(messaging, (payload) => {
-  console.log('📩 Foreground message received:', payload);
-});
+//onMessage(messaging, (payload) => {
+//  console.log('📩 Foreground message received:', payload);
+//});
