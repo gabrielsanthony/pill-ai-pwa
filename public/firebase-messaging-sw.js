@@ -26,20 +26,20 @@ self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
 // ✅ Ensures push always shows notification
-self.addEventListener('push', function (event) {
-  const payload = event.data?.json();
-  console.log('[firebase-messaging-sw.js] Push event received:', payload);
+//self.addEventListener('push', function (event) {
+//  const payload = event.data?.json();
+//  console.log('[firebase-messaging-sw.js] Push event received:', payload);
 
-  const title = payload?.notification?.title || '💊 Pill Reminder';
-  const body = payload?.notification?.body || 'Time to take your medicine';
+ // const title = payload?.notification?.title || '💊 Pill Reminder';
+ // const body = payload?.notification?.body || 'Time to take your medicine';
 
-  const options = {
-    body: body,
-    icon: '/icon-192x192.png',
-    requireInteraction: true,
-  };
+ // const options = {
+ //   body: body,
+ //   icon: '/icon-192x192.png',
+ //   requireInteraction: true,
+ // };
 
-  event.waitUntil(
-    self.registration.showNotification(title, options)
-  );
-});
+ // event.waitUntil(
+ //   self.registration.showNotification(title, options)
+ // );
+//});
