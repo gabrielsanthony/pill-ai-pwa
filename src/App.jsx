@@ -42,14 +42,22 @@ function extractMedicineName(text) {
             const [showReminderForm, setShowReminderForm] = useState(false);
             const [timesPerDay, setTimesPerDay] = useState(1);
             const [dailyTimes, setDailyTimes] = useState(['']);
+            const [isCourseComplete, setIsCourseComplete] = useState(false);
 
   // 🔁 Restore progress from localStorage
   useEffect(() => {
     const saved = localStorage.getItem('medsTaken');
-    if (saved) {
-      setMedsTaken(Number(saved));
+    const reminder = JSON.parse(localStorage.getItem("activeReminder"));
+
+    if (saved && reminder && reminder.days && reminder.timesPerDay) {
+    const totalDoses = reminder.days * reminder.timesPerDay;
+    const taken = Number(saved);
+    setMedsTaken(taken);
+    if (taken >= totalDoses) {
+      setIsCourseComplete(true);
     }
-  }, []);
+  }
+}, []);
 
   useEffect(() => {
   const reminder = JSON.parse(localStorage.getItem("activeReminder"));
@@ -420,7 +428,7 @@ localStorage.removeItem("medsTaken");
       }
     }
 
-    for (const reminder of remindersToSchedule) {
+ for (const reminder of remindersToSchedule) {
       try {
         const response = await fetch("/api/scheduleReminder", {
           method: "POST",
@@ -434,6 +442,11 @@ localStorage.removeItem("medsTaken");
         console.error("❌ Failed to save reminder:", err);
       }
     }
+
+    // ✅ Save dose timestamps locally for button logic
+    const doseTimestamps = remindersToSchedule.map(r => r.sendAt);
+    localStorage.setItem("doseSchedule", JSON.stringify(doseTimestamps));
+    console.log("🧠 Stored dose timestamps:", doseTimestamps);
 
     alert(`✅ ${remindersToSchedule.length} reminders scheduled for ${reminderDrug}`);
   } catch (err) {
@@ -454,28 +467,41 @@ localStorage.removeItem("medsTaken");
 )}
 
   {/* ✅ Progress Tracking UI */}
-  {reminderDrug && durationDays > 0 && !isLongTerm && (
-    <div className="progress-section">
-  <h3>📈 Track Your Medication</h3>
-  <progress max="100" value={(medsTaken / (durationDays * timesPerDay)) * 100}></progress>
-  <p>{Math.floor((medsTaken / (durationDays * timesPerDay)) * 100)}% of your meds journey completed</p>
+  {reminderDrug && durationDays > 0 && !isLongTerm && !isCourseComplete && (
+  <div className="progress-section">
+    <h3>📈 Track Your Medication</h3>
+    <progress max="100" value={(medsTaken / (durationDays * timesPerDay)) * 100}></progress>
+    <p>{Math.floor((medsTaken / (durationDays * timesPerDay)) * 100)}% of your meds journey completed</p>
 
-  {timeRemaining ? (
-    <p>⏳ Next dose in: <strong>{timeRemaining}</strong></p>
-  ) : (
-    <button
-      className="send-button"
-      onClick={() => {
-        const updated = medsTaken + 1;
-        setMedsTaken(updated);
-        localStorage.setItem("medsTaken", updated);
-      }}
-    >
-      ✅ Meds Taken
-    </button>
-  )}
-</div>
-  )}
+    {timeRemaining ? (
+      <p>⏳ Next dose in: <strong>{timeRemaining}</strong></p>
+    ) : (
+      <button
+        className="send-button"
+        onClick={() => {
+          const updated = medsTaken + 1;
+          setMedsTaken(updated);
+          localStorage.setItem("medsTaken", updated);
+
+          const total = durationDays * timesPerDay;
+          if (updated >= total) {
+            setIsCourseComplete(true);
+          }
+        }}
+      >
+        ✅ Meds Taken
+      </button>
+    )}
+  </div>
+)}
+
+{isCourseComplete && (
+  <div className="progress-section">
+    <h3>🎉 Great job!</h3>
+    <p>You've completed all your scheduled doses. Keep up the good work!</p>
+  </div>
+)}
+
 
   {/* ✅ Always visible – these are OUTSIDE the reminder form */}
   <div className="toggles">
