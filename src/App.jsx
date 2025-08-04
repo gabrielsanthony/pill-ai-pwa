@@ -44,6 +44,15 @@ function extractMedicineName(text) {
             const [dailyTimes, setDailyTimes] = useState(['']);
             const [isCourseComplete, setIsCourseComplete] = useState(false);
 
+      // ✅ Only allow Meds Taken button if within 30 min of next dose
+      function isDoseWindowOpen() {
+        if (!nextDoseTime) return false;
+        const now = new Date().getTime();
+        const dose = new Date(nextDoseTime).getTime();
+        const diffMins = Math.abs((dose - now) / 1000 / 60);
+        return diffMins <= 30;
+}
+
   // 🔁 Restore progress from localStorage
   useEffect(() => {
     const saved = localStorage.getItem('medsTaken');
@@ -474,26 +483,22 @@ localStorage.removeItem("medsTaken");
     <progress max="100" value={(medsTaken / (durationDays * timesPerDay)) * 100}></progress>
     <p>{Math.floor((medsTaken / (durationDays * timesPerDay)) * 100)}% of your meds journey completed</p>
 
-    {timeRemaining ? (
-      <p>⏳ Next dose in: <strong>{timeRemaining}</strong></p>
-    ) : (
-
-<div>
+  {isDoseWindowOpen() ? (
+  <div>
     <button
       className="send-button"
       onClick={() => {
-  if (isCourseComplete) return; // 🚫 Prevent action if course is done
+        if (isCourseComplete) return;
 
-  const updated = medsTaken + 1;
-  setMedsTaken(updated);
-  localStorage.setItem("medsTaken", updated);
+        const updated = medsTaken + 1;
+        setMedsTaken(updated);
+        localStorage.setItem("medsTaken", updated);
 
-  const total = durationDays * timesPerDay;
-  if (updated >= total) {
-    setIsCourseComplete(true);
-  }
-}}
-
+        const total = durationDays * timesPerDay;
+        if (updated >= total) {
+          setIsCourseComplete(true);
+        }
+      }}
     >
       ✅ Meds Taken
     </button>
@@ -510,9 +515,9 @@ localStorage.removeItem("medsTaken");
       🔁 Reset Progress (Testing Only)
     </button>
   </div>
-
-
-    )}
+) : (
+  <p>⏳ Next dose in: <strong>{timeRemaining}</strong></p>
+)}
   </div>
 )}
 
