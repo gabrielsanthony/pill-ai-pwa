@@ -287,7 +287,7 @@ useEffect(() => {
     }
 
     try {
-      const res = await fetch("/api/cancelReminders", {
+      const res = await fetch("/api/cancelReminder", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token }),
