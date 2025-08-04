@@ -1,38 +1,22 @@
-import admin from 'firebase-admin';
-
-if (!admin.apps.length) {
-  admin.initializeApp();
-}
-const db = admin.firestore();
-
+// /api/cancelReminders.js
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ message: 'Method not allowed' });
-  }
-
-  const { token } = req.body;
-
-  if (!token) {
-    return res.status(400).json({ message: 'Missing token' });
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const snapshot = await db
-      .collection('scheduledReminders')
-      .where('token', '==', token)
-      .get();
+    const { token } = req.body;
+    if (!token) {
+      return res.status(400).json({ error: 'Missing push token' });
+    }
 
-    const batch = db.batch();
+    console.log('🗑️ Cancelling all reminders for token:', token);
 
-    snapshot.forEach((doc) => {
-      batch.delete(doc.ref);
-    });
-
-    await batch.commit();
-
-    return res.status(200).json({ message: 'Reminders cancelled' });
+    // 👉 Optionally clear saved reminders from a database or schedule manager
+    // Since we don’t use Firestore or DB for saved reminders yet, we just return success
+    return res.status(200).json({ message: 'Reminders cancelled (simulated)' });
   } catch (err) {
-    console.error('Error cancelling reminders:', err);
-    return res.status(500).json({ message: 'Server error' });
+    console.error('❌ Error in cancelReminders:', err);
+    return res.status(500).json({ error: 'Server error cancelling reminders' });
   }
 }
