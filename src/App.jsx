@@ -501,15 +501,27 @@ localStorage.removeItem("medsTaken");
   <div>
     <button
       className="send-button"
-onClick={async () => {
+
+      onClick={async () => {
   if (isCourseComplete || !nextDoseTime) return;
 
-      // Cancel notification for this dose
-    fetch('/api/cancelSingleReminder', {
+  const token = await requestPermissionAndGetToken();
+
+  // 📵 Cancel the related push notification
+  try {
+    await fetch('/api/cancelSingleReminder', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ doseTime: nextDoseTime })
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        token,
+        timestamp: nextDoseTime.toISOString(),
+      }),
     });
+  } catch (err) {
+    console.error("❌ Failed to cancel push notification:", err);
+  }
 
   const takenList = [...takenTimestamps, nextDoseTime.toISOString()];
   const updated = medsTaken + 1;
@@ -525,25 +537,12 @@ onClick={async () => {
   const updatedSchedule = schedule.filter(ts => ts !== nextDoseTime.toISOString());
   localStorage.setItem("doseSchedule", JSON.stringify(updatedSchedule));
 
-  // 📵 Cancel the related push notification
-  try {
-    await fetch('/api/cancelReminder', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ timestamp: nextDoseTime.toISOString() }),
-    });
-  } catch (err) {
-    console.error("❌ Failed to cancel push notification:", err);
-  }
-
   // ⏭️ Set nextDoseTime to next future dose
   const now = new Date().getTime();
   const next = updatedSchedule
-  .map(ts => new Date(ts))
-  .sort((a, b) => a - b)
-  .find(d => d.getTime() > now);
+    .map(ts => new Date(ts))
+    .sort((a, b) => a - b)
+    .find(d => d.getTime() > now);
 
   if (next) {
     setNextDoseTime(next);
@@ -556,6 +555,7 @@ onClick={async () => {
     setIsCourseComplete(true);
   }
 }}
+
     >
       ✅ Meds Taken
     </button>
