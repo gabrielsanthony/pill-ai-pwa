@@ -395,6 +395,7 @@ console.log("🧠 Saved to localStorage:", reminderInfo);
 
 // 🧹 Reset medsTaken progress
 setMedsTaken(0);
+setIsCourseComplete(false); // 🔄 Reset progress bar visibility for new reminder
 localStorage.removeItem("medsTaken");
 
   const token = await requestPermissionAndGetToken();
