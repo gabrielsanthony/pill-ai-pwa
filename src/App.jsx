@@ -30,6 +30,7 @@ function extractMedicineName(text) {
           const [answer, setAnswer] = useState('');
 
           const [medsTaken, setMedsTaken] = useState(0);
+          const [takenTimestamps, setTakenTimestamps] = useState([]);
 
           const [nextDoseTime, setNextDoseTime] = useState(null);
           const [timeRemaining, setTimeRemaining] = useState('');
@@ -50,7 +51,9 @@ function extractMedicineName(text) {
         const now = new Date().getTime();
         const dose = new Date(nextDoseTime).getTime();
         const diffMins = Math.abs((dose - now) / 1000 / 60);
-        return diffMins <= 30;
+        
+          // Only allow within 30 minutes and if not already taken
+        return diffMins <= 30 && !takenTimestamps.includes(nextDoseTime.toISOString());
 }
 
   // 🔁 Restore progress from localStorage
@@ -62,6 +65,9 @@ function extractMedicineName(text) {
     const totalDoses = reminder.days * reminder.timesPerDay;
     const taken = Number(saved);
     setMedsTaken(taken);
+    const takenList = JSON.parse(localStorage.getItem("takenTimestamps")) || [];
+    setTakenTimestamps(takenList);
+
     if (taken >= totalDoses) {
       setIsCourseComplete(true);
     }
@@ -487,18 +493,22 @@ localStorage.removeItem("medsTaken");
   <div>
     <button
       className="send-button"
-      onClick={() => {
-        if (isCourseComplete) return;
+    onClick={() => {
+  if (isCourseComplete || !nextDoseTime) return;
 
-        const updated = medsTaken + 1;
-        setMedsTaken(updated);
-        localStorage.setItem("medsTaken", updated);
+  const takenList = [...takenTimestamps, nextDoseTime.toISOString()];
+  const updated = medsTaken + 1;
+  const total = durationDays * timesPerDay;
 
-        const total = durationDays * timesPerDay;
-        if (updated >= total) {
-          setIsCourseComplete(true);
-        }
-      }}
+  setTakenTimestamps(takenList);
+  setMedsTaken(updated);
+  localStorage.setItem("medsTaken", updated);
+  localStorage.setItem("takenTimestamps", JSON.stringify(takenList));
+
+  if (updated >= total) {
+    setIsCourseComplete(true);
+  }
+}}
     >
       ✅ Meds Taken
     </button>
@@ -507,8 +517,10 @@ localStorage.removeItem("medsTaken");
       className="cancel-button"
       onClick={() => {
         if (window.confirm("Reset your progress?")) {
-          setMedsTaken(0);
-          localStorage.setItem("medsTaken", 0);
+        setMedsTaken(0);
+        setTakenTimestamps([]);
+        localStorage.setItem("medsTaken", 0);
+        localStorage.setItem("takenTimestamps", JSON.stringify([]));
         }
       }}
     >
