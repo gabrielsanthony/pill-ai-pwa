@@ -501,7 +501,7 @@ localStorage.removeItem("medsTaken");
   <div>
     <button
       className="send-button"
-    onClick={() => {
+onClick={() => {
   if (isCourseComplete || !nextDoseTime) return;
 
   const takenList = [...takenTimestamps, nextDoseTime.toISOString()];
@@ -513,6 +513,24 @@ localStorage.removeItem("medsTaken");
   localStorage.setItem("medsTaken", updated);
   localStorage.setItem("takenTimestamps", JSON.stringify(takenList));
 
+  // 💾 Remove current dose from doseSchedule
+  const schedule = JSON.parse(localStorage.getItem("doseSchedule")) || [];
+  const updatedSchedule = schedule.filter(ts => ts !== nextDoseTime.toISOString());
+  localStorage.setItem("doseSchedule", JSON.stringify(updatedSchedule));
+
+  // ⏭️ Set nextDoseTime to next future dose
+  const now = new Date().getTime();
+  const next = updatedSchedule
+    .map(ts => new Date(ts))
+    .find(d => d.getTime() > now);
+
+  if (next) {
+    setNextDoseTime(next);
+  } else {
+    setNextDoseTime(null);
+  }
+
+  // ✅ Check if course is done
   if (updated >= total) {
     setIsCourseComplete(true);
   }
