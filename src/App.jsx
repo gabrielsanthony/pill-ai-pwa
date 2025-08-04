@@ -481,15 +481,18 @@ localStorage.removeItem("medsTaken");
     <button
       className="send-button"
       onClick={() => {
-        const updated = medsTaken + 1;
-        setMedsTaken(updated);
-        localStorage.setItem("medsTaken", updated);
+  if (isCourseComplete) return; // 🚫 Prevent action if course is done
 
-        const total = durationDays * timesPerDay;
-        if (updated >= total) {
-          setIsCourseComplete(true);
-        }
-      }}
+  const updated = medsTaken + 1;
+  setMedsTaken(updated);
+  localStorage.setItem("medsTaken", updated);
+
+  const total = durationDays * timesPerDay;
+  if (updated >= total) {
+    setIsCourseComplete(true);
+  }
+}}
+
     >
       ✅ Meds Taken
     </button>
