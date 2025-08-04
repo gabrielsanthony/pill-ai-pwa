@@ -476,21 +476,38 @@ localStorage.removeItem("medsTaken");
     {timeRemaining ? (
       <p>⏳ Next dose in: <strong>{timeRemaining}</strong></p>
     ) : (
-      <button
-        className="send-button"
-        onClick={() => {
-          const updated = medsTaken + 1;
-          setMedsTaken(updated);
-          localStorage.setItem("medsTaken", updated);
 
-          const total = durationDays * timesPerDay;
-          if (updated >= total) {
-            setIsCourseComplete(true);
-          }
-        }}
-      >
-        ✅ Meds Taken
-      </button>
+<div>
+    <button
+      className="send-button"
+      onClick={() => {
+        const updated = medsTaken + 1;
+        setMedsTaken(updated);
+        localStorage.setItem("medsTaken", updated);
+
+        const total = durationDays * timesPerDay;
+        if (updated >= total) {
+          setIsCourseComplete(true);
+        }
+      }}
+    >
+      ✅ Meds Taken
+    </button>
+
+    <button
+      className="cancel-button"
+      onClick={() => {
+        if (window.confirm("Reset your progress?")) {
+          setMedsTaken(0);
+          localStorage.setItem("medsTaken", 0);
+        }
+      }}
+    >
+      🔁 Reset Progress (Testing Only)
+    </button>
+  </div>
+
+
     )}
   </div>
 )}
