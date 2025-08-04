@@ -125,18 +125,22 @@ useEffect(() => {
 
   // 🧠 Restore reminder info from localStorage on load
 
-useEffect(() => {
+  useEffect(() => {
   setTimeout(() => {
     const stored = localStorage.getItem("activeReminder");
     if (stored) {
-      const { medicine, days, timesPerDay } = JSON.parse(stored);
-      console.log("🔄 Restoring reminder from localStorage:", { medicine, days, timesPerDay });
+      const { medicine, days, timesPerDay, dailyTimes: storedTimes } = JSON.parse(stored);
+      console.log("🔄 Restoring reminder from localStorage:", { medicine, days, timesPerDay, storedTimes });
       setReminderDrug(medicine);
       setDurationDays(days);
       setTimesPerDay(timesPerDay);
-      setDailyTimes(Array(timesPerDay).fill(''));
+      if (storedTimes && Array.isArray(storedTimes)) {
+        setDailyTimes(storedTimes);
+      } else {
+        setDailyTimes(Array(timesPerDay).fill(''));
+      }
     }
-  }, 300); // Wait 300ms to avoid interrupting Firebase setup
+  }, 300);
 }, []);
 
 
@@ -405,7 +409,11 @@ const reminderInfo = {
   days: isLongTerm ? 30 : durationDays,
   timesPerDay: timesPerDay
 };
-localStorage.setItem("activeReminder", JSON.stringify(reminderInfo));
+localStorage.setItem("activeReminder", JSON.stringify({
+  ...reminderInfo,
+  dailyTimes
+}));
+
 console.log("🧠 Saved to localStorage:", reminderInfo);
 
 // 🧹 Reset medsTaken progress
