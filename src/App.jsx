@@ -533,7 +533,7 @@ onClick={async () => {
 
   // ⏭️ Set nextDoseTime to next future dose
   const now = new Date().getTime();
-  cconst next = updatedSchedule
+  const next = updatedSchedule
   .map(ts => new Date(ts))
   .sort((a, b) => a - b)
   .find(d => d.getTime() > now);
