@@ -504,6 +504,13 @@ localStorage.removeItem("medsTaken");
 onClick={async () => {
   if (isCourseComplete || !nextDoseTime) return;
 
+      // Cancel notification for this dose
+    fetch('/api/cancelSingleReminder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ doseTime: nextDoseTime })
+    });
+
   const takenList = [...takenTimestamps, nextDoseTime.toISOString()];
   const updated = medsTaken + 1;
   const total = durationDays * timesPerDay;
