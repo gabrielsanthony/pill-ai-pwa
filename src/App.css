@@ -161,3 +161,25 @@ input[type="text"], select {
   padding: 0.5rem;
   font-size: 0.95rem;
 }
+
+@media screen and (max-width: 600px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .logo {
+    width: 160px;
+    margin-bottom: 0.5rem;
+  }
+
+  .language-select {
+    width: 100%;
+    align-items: flex-start;
+    margin-top: 0.5rem;
+  }
+
+  .language-select select {
+    width: 100%;
+  }
+}
