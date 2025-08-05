@@ -13,12 +13,17 @@ body {
 }
 
 .header {
+  display: flex;
+  justify-content: flex-start; /* Align logo to the left */
+  align-items: center;
+  padding-left: 1rem; /* Optional: space from the edge */
   margin-bottom: 2rem;
 }
 
 .logo {
-  height: 80px;
+  height: 160px; /* 2x the original size */
   margin-bottom: 0.5rem;
+  display: block;
 }
 
 .header h1 {

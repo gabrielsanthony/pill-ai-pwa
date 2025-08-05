@@ -220,7 +220,7 @@ useEffect(() => {
           src={logo} // ✅ Use imported image path
           alt="Pill-AI Logo"
           className="logo"
-          width="100"
+          width="160"
         />
 
       </header>
