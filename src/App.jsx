@@ -265,21 +265,9 @@ function App() {
             <strong>💬 Answer:</strong>
             <p>{answer}</p>
           </div>
-
-          {!showReminderForm && (
-            <button
-              className="send-button"
-              onClick={() => setShowReminderForm(true)}
-            >
-              ➕ Set a Reminder
-            </button>
-          )}
         </div>
       )}
       </div>
-
-
-      
 
       {showReminderForm && (
         <div className="reminder-form">
@@ -448,9 +436,19 @@ function App() {
       )}
 
       {/* ✅ Progress Tracking UI */}
-      {reminderDrug && durationDays > 0 && !isLongTerm && !isCourseComplete && (
-        <div className="progress-section">
-          <h3>📈 Track Your Medication</h3>
+<div className="progress-section">
+  <h3>📈 Track Your Medication</h3>
+
+  {!showReminderForm && (
+    <button
+      className="send-button"
+      onClick={() => setShowReminderForm(true)}
+      style={{ marginBottom: '10px' }}
+    >
+      ➕ Set a Reminder
+    </button>
+  )}
+
           <progress max="100" value={(medsTaken / (durationDays * timesPerDay)) * 100}></progress>
           <p>{Math.floor((medsTaken / (durationDays * timesPerDay)) * 100)}% of your meds journey completed</p>
 

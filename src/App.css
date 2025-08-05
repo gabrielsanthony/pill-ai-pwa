@@ -140,7 +140,7 @@ input[type="text"], select {
 .progress-section {
   margin: 20px 0;
   padding: 10px;
-  border: 1px solid #ddd;
+  border: 1px solid #ccc;
   border-radius: 8px;
   background: #f9f9f9;
 }
