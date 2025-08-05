@@ -108,13 +108,15 @@ input[type="text"], select {
 }
 
 .answer-box {
-  background-color: #fff8e1; /* soft pale yellow */
-  border: 1px solid #ff9800;  /* orange border */
-  color: #333;                /* dark grey text */
-  border-radius: 8px;
-  padding: 12px;
-  margin-top: 16px;
-  font-size: 1rem;
+  background-color: #fffdf5; /* soft pale yellow */
+  border: 1px solid #f4b000; /* orange border */
+  color: #111111;                /* dark grey text */
+  border-radius: 10px;
+  padding: 16px;
+  margin-top: 20px;
+  font-size: 1.05rem;
+  text-align: right;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 }
 
 .answer-box strong {
@@ -138,6 +140,9 @@ input[type="text"], select {
 }
 
 .progress-section {
+  display: flex;
+  flex-direction: column; /* 👈 Force vertical stacking */
+  align-items: center;
   margin: 20px 0;
   padding: 10px;
   border: 1px solid #ccc;

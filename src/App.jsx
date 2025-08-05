@@ -40,6 +40,11 @@ function App() {
   const [dailyTimes, setDailyTimes] = useState(['']);
   const [isCourseComplete, setIsCourseComplete] = useState(false);
 
+  const hasReminder =
+  reminderDrug && 
+  (isLongTerm || (durationDays && durationDays > 0)) && 
+  timesPerDay > 0;
+
   // ✅ Only allow Meds Taken button if within 30 min of next dose
   function isDoseWindowOpen() {
     if (!nextDoseTime) return false;
@@ -449,8 +454,12 @@ function App() {
     </button>
   )}
 
-          <progress max="100" value={(medsTaken / (durationDays * timesPerDay)) * 100}></progress>
-          <p>{Math.floor((medsTaken / (durationDays * timesPerDay)) * 100)}% of your meds journey completed</p>
+          {hasReminder && !isCourseComplete && (
+  <>
+    <progress max="100" value={(medsTaken / (durationDays * timesPerDay)) * 100}></progress>
+    <p>{Math.floor((medsTaken / (durationDays * timesPerDay)) * 100)}% of your meds journey completed</p>
+  </>
+)}
 
           {isDoseWindowOpen() ? (
             <div>
@@ -560,7 +569,6 @@ function App() {
             </div>
           )}
         </div>
-      )}
 
       {isCourseComplete && (
         <div className="progress-section">
