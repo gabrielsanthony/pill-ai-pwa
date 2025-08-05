@@ -207,25 +207,29 @@ function App() {
     <div className="app-container">
       <header className="header">
         <img src={logo} alt="Pill-AI Logo" className="logo" />
-        <div className="language-selector">
-          🌐 Choose language:
-          <select id="language" value={language} onChange={(e) => setLanguage(e.target.value)}>
-            <option value="English">English</option>
-            <option value="Te Reo Māori">Te Reo Māori</option>
-            <option value="Samoan">Samoan</option>
-            <option value="Mandarin">Mandarin</option>
-          </select>
-        </div>
+       <div className="language-selector">
+  <label htmlFor="language" style={{ fontWeight: "bold", display: "block", marginBottom: "4px" }}>
+    🌐 Choose your language:
+  </label>
+  <select id="language" value={language} onChange={(e) => setLanguage(e.target.value)}>
+    <option value="English">English</option>
+    <option value="Te Reo Māori">Te Reo Māori</option>
+    <option value="Samoan">Samoan</option>
+    <option value="Mandarin">Mandarin</option>
+  </select>
+</div>
       </header>
 
-      <div className="form-group">
-        <input
-          type="text"
-          placeholder="💡 Ask a medication related question"
-          value={question}
-          onChange={(e) => setQuestion(e.target.value)}
-        />
-      </div>
+      <div className="question-card">
+  <div className="form-group">
+    <input
+      type="text"
+      className="question-input"
+      placeholder="💡 Ask a medication related question"
+      value={question}
+      onChange={(e) => setQuestion(e.target.value)}
+    />
+  </div>
 
       <button
         className="send-button"
@@ -255,6 +259,7 @@ function App() {
       >
         Send
       </button>
+      </div>
 
 
       {answer && (

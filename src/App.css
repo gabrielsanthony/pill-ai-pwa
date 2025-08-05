@@ -108,13 +108,17 @@ input[type="text"], select {
 }
 
 .answer-box {
-  background-color: #fff3e0; /* soft orange */
-  border: 1px solid #ff9800;
-  color: #e65100;
+  background-color: #fff8e1; /* soft pale yellow */
+  border: 1px solid #ff9800;  /* orange border */
+  color: #333;                /* dark grey text */
   border-radius: 8px;
   padding: 12px;
   margin-top: 16px;
   font-size: 1rem;
+}
+
+.answer-box strong {
+  color: #f58025;
 }
 
 .cancel-button {
@@ -152,9 +156,17 @@ input[type="text"], select {
 .language-select {
   font-size: 0.95rem;
   display: flex;
-  flex-direction: column;
-  align-items: flex-end; /* keep it neat on the top right */
+  flex-direction: column; /* stack label and dropdown vertically */
+  align-items: flex-start;
+  margin-left: auto;
+  text-align: left;
 }
+
+.language-select label {
+  font-weight: bold;
+  margin-bottom: 0.25rem;
+}
+
 
 .language-select select {
   margin-top: 0.3rem;
@@ -197,4 +209,13 @@ input[type="text"], select {
 
 .cancel-button.small:hover {
   background-color: #a60000;
+}
+
+.question-card {
+  background-color: #ffffff;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
 }
