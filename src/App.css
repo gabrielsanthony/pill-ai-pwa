@@ -183,3 +183,18 @@ input[type="text"], select {
     width: 100%;
   }
 }
+
+.cancel-button.small {
+  font-size: 0.85rem;
+  padding: 0.4rem 0.8rem;
+  margin-top: 0.75rem;
+  background-color: #cc0000;
+  border: none;
+  border-radius: 5px;
+  color: white;
+  cursor: pointer;
+}
+
+.cancel-button.small:hover {
+  background-color: #a60000;
+}
