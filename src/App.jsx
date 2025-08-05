@@ -217,9 +217,9 @@ useEffect(() => {
     <div className="app-container">
       <header className="header">
   <img src={logo} alt="Pill-AI Logo" className="logo" />
-  <div className="language-select">
+  <div className="form-group">
     🌐 Choose answer language:
-    <select value={language} onChange={(e) => setLanguage(e.target.value)}>
+    <select id="language" value={language} onChange={(e) => setLanguage(e.target.value)}>
       <option value="English">English</option>
       <option value="Te Reo Māori">Te Reo Māori</option>
       <option value="Samoan">Samoan</option>
@@ -227,19 +227,6 @@ useEffect(() => {
     </select>
   </div>
 </header>
-      <div className="form-group">
-        <label htmlFor="language">🌐 Choose answer language:</label>
-        <select
-          id="language"
-          value={language}
-          onChange={(e) => setLanguage(e.target.value)}
-        >
-          <option>English</option>
-          <option>Te Reo Māori</option>
-          <option>Samoan</option>
-          <option>Mandarin</option>
-        </select>
-      </div>
       <div className="form-group">
         <input
           type="text"
