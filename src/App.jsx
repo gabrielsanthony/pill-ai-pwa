@@ -222,8 +222,7 @@ useEffect(() => {
           className="logo"
           width="100"
         />
-        <h1>PILL-AI</h1>
-        <p className="tagline">Your Trusted Medicines Advisor</p>
+
       </header>
       <div className="form-group">
         <label htmlFor="language">🌐 Choose answer language:</label>
