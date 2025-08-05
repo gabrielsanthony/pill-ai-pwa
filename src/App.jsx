@@ -216,14 +216,17 @@ useEffect(() => {
     <>
     <div className="app-container">
       <header className="header">
-        <img
-          src={logo} // ✅ Use imported image path
-          alt="Pill-AI Logo"
-          className="logo"
-          width="160"
-        />
-
-      </header>
+  <img src={logo} alt="Pill-AI Logo" className="logo" />
+  <div className="language-select">
+    🌐 Choose answer language:
+    <select value={language} onChange={(e) => setLanguage(e.target.value)}>
+      <option value="English">English</option>
+      <option value="Te Reo Māori">Te Reo Māori</option>
+      <option value="Samoan">Samoan</option>
+      <option value="Mandarin">Mandarin</option>
+    </select>
+  </div>
+</header>
       <div className="form-group">
         <label htmlFor="language">🌐 Choose answer language:</label>
         <select

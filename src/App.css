@@ -21,7 +21,9 @@ body {
 }
 
 .logo {
-  height: 160px; /* 2x the original size */
+  height: auto; /* 2x the original size */
+  width: 200px;
+  max-width: 100%;
   margin-bottom: 0.5rem;
   display: block;
 }
@@ -137,4 +139,25 @@ input[type="text"], select {
   border: 1px solid #ddd;
   border-radius: 8px;
   background: #f9f9f9;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  margin-bottom: 2rem;
+}
+
+.language-select {
+  font-size: 0.95rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end; /* keep it neat on the top right */
+}
+
+.language-select select {
+  margin-top: 0.3rem;
+  padding: 0.5rem;
+  font-size: 0.95rem;
 }
