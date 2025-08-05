@@ -209,7 +209,7 @@ function App() {
         <img src={logo} alt="Pill-AI Logo" className="logo" />
        <div className="language-selector">
   <label htmlFor="language" style={{ fontWeight: "bold", display: "block", marginBottom: "4px" }}>
-    🌐 Choose your language:
+    🌐 Language:
   </label>
   <select id="language" value={language} onChange={(e) => setLanguage(e.target.value)}>
     <option value="English">English</option>
@@ -259,9 +259,6 @@ function App() {
       >
         Send
       </button>
-      </div>
-
-
       {answer && (
         <div>
           <div className="answer-box">
@@ -279,6 +276,10 @@ function App() {
           )}
         </div>
       )}
+      </div>
+
+
+      
 
       {showReminderForm && (
         <div className="reminder-form">
