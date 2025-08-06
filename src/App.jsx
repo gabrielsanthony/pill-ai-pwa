@@ -39,6 +39,8 @@ function App() {
   const [timesPerDay, setTimesPerDay] = useState(1);
   const [dailyTimes, setDailyTimes] = useState(['']);
   const [isCourseComplete, setIsCourseComplete] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+
 
   const hasReminder =
   reminderDrug && 
@@ -55,6 +57,39 @@ function App() {
     // Only allow within 30 minutes and if not already taken
     return diffMins <= 30 && !takenTimestamps.includes(nextDoseTime.toISOString());
   }
+
+  function handleVoiceQuery(transcript) {
+  console.log("🤖 Handling voice input:", transcript);
+  setQuestion(transcript); // Show what was said in the input box
+
+  const payload = {
+    question: transcript,
+    language,
+    simplify,
+    memory,
+  };
+
+  fetch("/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
+    .then((res) => res.json())
+    .then((data) => {
+      setAnswer(data.answer);
+      speakAnswer(data.answer);
+    })
+    .catch((err) => {
+      console.error("❌ Error processing voice input:", err);
+      alert("There was a problem getting the AI answer.");
+    });
+}
+
+function speakAnswer(text) {
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = "en-US";
+  speechSynthesis.speak(utterance);
+}
 
   // 🔁 Restore progress from localStorage
   useEffect(() => {
@@ -171,6 +206,39 @@ function App() {
     };
     setupNotifications();
   }, []);
+
+  useEffect(() => {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (!SpeechRecognition) {
+    console.warn("🛑 Speech Recognition not supported in this browser");
+    return;
+  }
+
+  const recognition = new SpeechRecognition();
+  recognition.lang = "en-US";
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+  recognition.onstart = () => {
+    setIsListening(true);
+    console.log("🎙️ Listening...");
+  };
+
+  recognition.onend = () => {
+    setIsListening(false);
+    console.log("🛑 Stopped listening");
+  };
+
+  recognition.onresult = (event) => {
+    const transcript = event.results[0][0].transcript;
+    console.log("🗣️ You said:", transcript);
+    handleVoiceQuery(transcript);
+  };
+
+  // Store in window for global access
+  window.recognition = recognition;
+}, []);
 
   const content = {
     English: {
@@ -612,8 +680,21 @@ function App() {
         </div>
       )}
 
-
-     
+<div className="card voice-card">
+  <h3>🎙️ Voice Assistant</h3>
+  <button
+    className="mic-button"
+    onClick={() => {
+      if (window.recognition) {
+        window.recognition.start();
+      } else {
+        alert("🎤 Voice recognition not supported in this browser.");
+      }
+    }}
+  >
+    🎤 {isListening ? "Listening..." : "Tap to Ask"}
+  </button>
+</div>
 
 <div className="info-card">
   <details>

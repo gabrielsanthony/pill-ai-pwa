@@ -262,3 +262,27 @@ input[type="text"], select {
 .info-card details + details {
   margin-top: 1rem;
 }
+
+.voice-card {
+  background-color: #fffaf0;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid #ffd8a8;
+  text-align: center;
+  margin-top: 24px;
+}
+
+.mic-button {
+  background-color: #ff7f50;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 40px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.mic-button:hover {
+  background-color: #ff6347;
+}
