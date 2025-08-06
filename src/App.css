@@ -6,7 +6,8 @@ body {
 }
 
 .app-container {
-  max-width: 800px;
+  max-width: 1000px;
+  width: 90%; /* makes it fluid */
   margin: 0 auto;
   padding: 2rem;
   text-align: center;
