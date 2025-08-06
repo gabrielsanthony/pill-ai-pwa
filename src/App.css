@@ -273,16 +273,24 @@ input[type="text"], select {
 }
 
 .mic-button {
-  background-color: #ff7f50;
+  background-color: #ff6600; /* High contrast orange */
   color: white;
   border: none;
-  padding: 12px 20px;
-  border-radius: 40px;
-  font-size: 16px;
+  padding: 20px 30px;
+  font-size: 22px; /* Larger font */
+  border-radius: 60px;
   cursor: pointer;
-  transition: background-color 0.3s;
+  font-weight: bold;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  transition: background-color 0.3s, transform 0.2s;
 }
 
 .mic-button:hover {
-  background-color: #ff6347;
+  background-color: #cc5200;
+  transform: scale(1.05);
+}
+
+.mic-button:focus {
+  outline: 4px solid #ffd700; /* Yellow outline for keyboard users */
+  outline-offset: 4px;
 }

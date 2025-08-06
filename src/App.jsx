@@ -692,7 +692,7 @@ function speakAnswer(text) {
       }
     }}
   >
-    🎤 {isListening ? "Listening..." : "Tap to Ask"}
+    🔊🎤 {isListening ? "Listening..." : "Tap to Ask"}
   </button>
 </div>
 
