@@ -253,6 +253,8 @@ function App() {
     }
   }}
 >
+ <h2 className="card-title">💬 Medicines Chat</h2>
+
   <div className="form-group">
     <input
       type="text"
@@ -266,6 +268,26 @@ function App() {
   <button className="send-button" type="submit">
     Send
   </button>
+
+   {/* ✅ Always visible – these are OUTSIDE the reminder form */}
+      <div className="toggles">
+        <label>
+          <input
+            type="checkbox"
+            checked={simplify}
+            onChange={() => setSimplify(!simplify)}
+          />
+          ✨ Simplify the answer's language
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={memory}
+            onChange={() => setMemory(!memory)}
+          />
+          🧠 Memorise previous answers for context in follow-up questions
+        </label>
+      </div>
 
   {answer && (
     <div>
@@ -591,25 +613,7 @@ function App() {
       )}
 
 
-      {/* ✅ Always visible – these are OUTSIDE the reminder form */}
-      <div className="toggles">
-        <label>
-          <input
-            type="checkbox"
-            checked={simplify}
-            onChange={() => setSimplify(!simplify)}
-          />
-          ✨ Simplify the answer's language
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={memory}
-            onChange={() => setMemory(!memory)}
-          />
-          🧠 Memorise previous answers for context in follow-up questions
-        </label>
-      </div>
+     
 
 <div className="info-card">
   <details>
