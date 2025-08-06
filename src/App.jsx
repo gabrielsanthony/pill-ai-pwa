@@ -225,7 +225,34 @@ function App() {
 </div>
       </header>
 
-      <div className="question-card">
+<form
+  className="question-card"
+  onSubmit={async (e) => {
+    e.preventDefault(); // ⛔ Prevent page reload on Enter
+
+    const payload = {
+      question,
+      language,
+      simplify,
+      memory,
+    };
+
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json();
+      setAnswer(result.answer);
+      setShowReminderForm(false); // Reset in case they ask a new question
+    } catch (err) {
+      console.error(err);
+      alert("❌ Error fetching response");
+    }
+  }}
+>
   <div className="form-group">
     <input
       type="text"
@@ -236,43 +263,19 @@ function App() {
     />
   </div>
 
-      <button
-        className="send-button"
-        onClick={async () => {
-          const payload = {
-            question,
-            language,
-            simplify,
-            memory,
-          };
+  <button className="send-button" type="submit">
+    Send
+  </button>
 
-          try {
-            const response = await fetch("/api/chat", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(payload),
-            });
-
-            const result = await response.json();
-            setAnswer(result.answer);
-            setShowReminderForm(false); // Reset in case they ask a new question
-          } catch (err) {
-            console.error(err);
-            alert("❌ Error fetching response");
-          }
-        }}
-      >
-        Send
-      </button>
-      {answer && (
-        <div>
-          <div className="answer-box">
-            <strong>💬 Answer:</strong>
-            <p>{answer}</p>
-          </div>
-        </div>
-      )}
+  {answer && (
+    <div>
+      <div className="answer-box">
+        <strong>💬 Answer:</strong>
+        <p>{answer}</p>
       </div>
+    </div>
+  )}
+</form>
 
       {showReminderForm && (
         <div className="reminder-form">
@@ -428,6 +431,8 @@ function App() {
                 console.error("❌ Reminder scheduling error:", err);
                 alert("❌ Error while saving reminder");
               }
+                setShowReminderForm(false); // ✅ Add this line here
+
             }}
           >
             Save Reminder
@@ -446,12 +451,20 @@ function App() {
 
   {!showReminderForm && (
     <button
-      className="send-button"
-      onClick={() => setShowReminderForm(true)}
-      style={{ marginBottom: '10px' }}
-    >
-      ➕ Set a Reminder
-    </button>
+  className="send-button"
+  onClick={() => {
+    // ✅ Clear previous values
+    setReminderDrug('');
+    setIsLongTerm(false);
+    setDurationDays(7);
+    setTimesPerDay(1);
+    setDailyTimes(['']);
+    setShowReminderForm(true); // Show the form
+  }}
+  style={{ marginBottom: '10px' }}
+>
+  ➕ Set Med Reminder
+</button>
   )}
 
           {hasReminder && !isCourseComplete && (
@@ -597,23 +610,29 @@ function App() {
           🧠 Memorise previous answers for context in follow-up questions
         </label>
       </div>
-      <details className="info-section">
-        <summary>🔒 Privacy Policy – Click to expand</summary>
-        <p>{content[language]?.privacy || content["English"].privacy}</p>
-      </details>
 
-      <details className="info-section">
-        <summary>❓ FAQ – Click to expand</summary>
-        <ul>
-          {content[language].faq.map((item, idx) => (
-            <li key={idx}>
-              <strong>Q:</strong> {item.q}
-              <br />
-              <strong>A:</strong> {item.a}
-            </li>
-          ))}
-        </ul>
-      </details>
+<div className="info-card">
+  <details>
+    <summary>🔒 Privacy Policy – Click to expand</summary>
+    <p>{content[language]?.privacy || content["English"].privacy}</p>
+  </details>
+</div>
+
+<div className="info-card">
+  <details>
+    <summary>❓ FAQ – Click to expand</summary>
+    <ul>
+      {content[language].faq.map((item, idx) => (
+        <li key={idx}>
+          <strong>Q:</strong> {item.q}
+          <br />
+          <strong>A:</strong> {item.a}
+        </li>
+      ))}
+    </ul>
+  </details>
+</div>
+
     </div> {/* closes app-container */}
   </div>
 );
