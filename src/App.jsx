@@ -613,12 +613,29 @@ function App() {
 
 <div className="info-card">
   <details>
+  <summary>🧪 Instructions – Click to expand</summary>
+  <ol>
+    <li>💬 Type a medicine-related question in the box at the top of the page.</li>
+    <li>💡 Press <strong>Enter</strong> or click <strong>Send</strong> to get an answer from Pill-AI.</li>
+    <li>🌐 To change the app’s language, use the <strong>Language</strong> dropdown in the top-right corner.</li>
+    <li>⏰ If the answer includes medicine info, click <strong>➕ Set Med Reminder</strong> to schedule reminders.</li>
+    <li>📅 Choose how many times a day you take your medicine, and for how many days. Then click <strong>Save Reminder</strong>.</li>
+    <li>🔔 Pill-AI will notify you when it’s time to take your medication.</li>
+    <li>✅ When you take your dose, click the <strong>Meds Taken</strong> button. You’ll only see it when a dose is due (within 30 mins).</li>
+    <li>📈 Watch your progress bar increase as you stay on track!</li>
+    <li>🔁 You can reset or cancel reminders at any time using the red buttons below the tracker.</li>
+  </ol>
+</details>
+
+  <hr style={{ margin: "1.5rem 0", border: "none", borderTop: "1px solid #ddd" }} />
+
+  <details>
     <summary>🔒 Privacy Policy – Click to expand</summary>
     <p>{content[language]?.privacy || content["English"].privacy}</p>
   </details>
-</div>
 
-<div className="info-card">
+  <hr style={{ margin: "1.5rem 0", border: "none", borderTop: "1px solid #ddd" }} />
+
   <details>
     <summary>❓ FAQ – Click to expand</summary>
     <ul>
