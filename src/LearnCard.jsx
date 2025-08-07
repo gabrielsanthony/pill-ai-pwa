@@ -1,10 +1,14 @@
 import React, { useEffect, useState } from 'react';
+import { getXP, addXP, calculateLevel } from '../utils/xp';
 
 function LearnCard({ hasReminder, reminderDrug, setActiveTab }) {
     const [quiz, setQuiz] = useState(null);
     const [selected, setSelected] = useState(null);
     const [feedback, setFeedback] = useState('');
+    const [xp, setXp] = useState(0);
+    const [level, setLevel] = useState(1);
 
+    // Load quiz on reminder change
     useEffect(() => {
         if (!hasReminder || !reminderDrug) return;
 
@@ -34,10 +38,20 @@ function LearnCard({ hasReminder, reminderDrug, setActiveTab }) {
         fetchQuiz();
     }, [hasReminder, reminderDrug]);
 
+    // Load XP from localStorage on first render
+    useEffect(() => {
+        const currentXP = getXP();
+        setXp(currentXP);
+        setLevel(calculateLevel(currentXP));
+    }, []);
+
     function handleChoice(choice) {
         setSelected(choice);
         if (choice === quiz.answer) {
             setFeedback("✅ Correct!");
+            const newXP = addXP(10);
+            setXp(newXP);
+            setLevel(calculateLevel(newXP));
         } else {
             setFeedback(`❌ Incorrect. The correct answer was: ${quiz.answer}`);
         }
@@ -57,6 +71,9 @@ function LearnCard({ hasReminder, reminderDrug, setActiveTab }) {
                 </>
             ) : quiz ? (
                 <>
+                    <p><strong>🎖 Level:</strong> {level} | <strong>XP:</strong> {xp}</p>
+                    <progress value={xp % 100} max="100" style={{ width: '100%', marginBottom: '1rem' }} />
+
                     <p><strong>💊 Medicine:</strong> {reminderDrug}</p>
                     <p style={{ marginTop: '1rem' }}><strong>🧠 Quiz:</strong> {quiz.question}</p>
                     <ul style={{ listStyle: 'none', paddingLeft: 0 }}>
