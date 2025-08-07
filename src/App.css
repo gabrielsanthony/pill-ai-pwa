@@ -180,25 +180,28 @@ input[type="text"], select {
   font-size: 0.95rem;
 }
 @media screen and (max-width: 600px) {
-  .header {
-    flex-direction: column;
-    align-items: flex-start;
-    padding: 0 12px;
+ .header {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 0 12px;
   }
   .logo {
     width: 160px;
     margin-bottom: 0.5rem;
   }
   .language-selector {
-    width: 100%;
-    align-items: flex-start;
-    margin-left: 0;
-    margin-top: 0.5rem;
+    width: auto;
+    align-items: flex-end;
+    margin-left: auto;
   }
-  .language-selector select {
-    width: 100%;
-    min-width: 0;
+.language-selector select {
+  width: auto;
+  font-size: 0.9rem;
+  padding: 0.4rem 0.6rem;
   }
+
  /* Narrower card with safe gutters; no horizontal scroll */
 .card {
   width: 100%;
@@ -331,17 +334,25 @@ select {
   justify-content: center;
 }
 
-/* TRACK 💊 card */
-.track-card {
-  background-color: #fdf5e6; /* light orange cream */
+/* TRACK 💊 card — match other cards */
+.card.track-card {
+  background-color: #ffffff;
   color: #000000;
   border-left: 6px solid #f58025;
 }
+/* Kill the inner grey panel just for Track */
+.track-card .progress-section {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
 /* ABOUT ℹ card */
 .about-card {
-  background-color: #f5f5f5; /* soft gray */
+  background-color: #ffffff; /* soft gray */
   color: #000000;
-  border-left: 6px solid #cccccc;
+  border-left: 6px solid #f58025;
 }
 .card h2 {
   font-size: 1.25rem;
@@ -413,4 +424,22 @@ select {
 .card,
 .answer-box {
   overflow-wrap: anywhere;
+}
+
+.learn-card {
+  background: #ffffff;                 /* readable white */
+  border-left: 6px solid #f58025;      /* same orange accent */
+}
+/* Fallback: target buttons inside the learn card */
+.learn-card button {
+  background: #fff;
+  color: #111 !important;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 12px 16px;
+  text-align: left;
+}
+.learn-card button.selected {
+  background: #fff6ec;
+  border-color: #f58025;
 }
