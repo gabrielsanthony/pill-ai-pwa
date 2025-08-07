@@ -31,18 +31,27 @@ function App() {
     const [isListening, setIsListening] = useState(false);
     const [activeTab, setActiveTab] = useState('ask'); // Options: ask, track, voice, about
 
+    const [slideDir, setSlideDir] = useState('right'); // 'left' or 'right'
+
+    const goToTab = (newTab) => {
+    const oldIndex = tabOrder.indexOf(activeTab);
+    const newIndex = tabOrder.indexOf(newTab);
+    setSlideDir(newIndex > oldIndex ? 'right' : 'left');
+    setActiveTab(newTab);
+    };
+
     const tabOrder = ['ask', 'track', 'voice', 'learn', 'about'];
     const handlers = useSwipeable({
-        onSwipedLeft: () => {
-            const currentIndex = tabOrder.indexOf(activeTab);
-            if (currentIndex < tabOrder.length - 1) setActiveTab(tabOrder[currentIndex + 1]);
-        },
-        onSwipedRight: () => {
-            const currentIndex = tabOrder.indexOf(activeTab);
-            if (currentIndex > 0) setActiveTab(tabOrder[currentIndex - 1]);
-        },
-        preventDefaultTouchmoveEvent: true,
-        trackMouse: true,
+    onSwipedLeft: () => {
+        const i = tabOrder.indexOf(activeTab);
+        if (i < tabOrder.length - 1) goToTab(tabOrder[i + 1]);
+    },
+    onSwipedRight: () => {
+        const i = tabOrder.indexOf(activeTab);
+        if (i > 0) goToTab(tabOrder[i - 1]);
+    },
+    preventDefaultTouchmoveEvent: true,
+    trackMouse: true,
     });
 
     const hasReminder =
@@ -354,14 +363,16 @@ function App() {
                 </header>
 
                 <div className="tab-bar">
-                    <button className={activeTab === 'ask' ? 'tab active' : 'tab'} onClick={() => setActiveTab('ask')}>💬 Chat</button>
-                    <button className={activeTab === 'track' ? 'tab active' : 'tab'} onClick={() => setActiveTab('track')}>💊 Track</button>
-                    <button className={activeTab === 'voice' ? 'tab active' : 'tab'} onClick={() => setActiveTab('voice')}>🎙️ Voice</button>
-                    <button className={activeTab === 'learn' ? 'tab active' : 'tab'} onClick={() => setActiveTab('learn')}>📘 Learn</button>
-                    <button className={activeTab === 'about' ? 'tab active' : 'tab'} onClick={() => setActiveTab('about')}>ℹ️ About</button>
+                     <button className={activeTab === 'ask' ? 'tab active' : 'tab'} onClick={() => goToTab('ask')}>💬 Chat</button>
+                        <button className={activeTab === 'track' ? 'tab active' : 'tab'} onClick={() => goToTab('track')}>💊 Track</button>
+                        <button className={activeTab === 'voice' ? 'tab active' : 'tab'} onClick={() => goToTab('voice')}>🎙️ Voice</button>
+                        <button className={activeTab === 'learn' ? 'tab active' : 'tab'} onClick={() => goToTab('learn')}>📘 Learn</button>
+                        <button className={activeTab === 'about' ? 'tab active' : 'tab'} onClick={() => goToTab('about')}>ℹ️ About</button>
                 </div>
             
-            <div {...handlers} className="swipe-wrapper">
+            <div className="card-viewport">
+            <div {...handlers} className={`swipe-wrapper slide-${slideDir}`} key={activeTab}>
+                {/* keep ALL your existing tab conditionals here */}
             {activeTab === 'ask' && (
                 <form
                     className="card ask-card"
@@ -824,6 +835,7 @@ function App() {
                 </div>
 
             </div> {/* closes app-container */}
+        </div>
         </div>
     );
 }
