@@ -747,6 +747,7 @@ function App() {
                     </div>
                 )}
 
+                {activeTab === 'voice' && (
                 <div className="card voice-card">
                     <h3>🎙️ Voice Assistant</h3>
                     <button
@@ -762,7 +763,9 @@ function App() {
                         🔊🎤 {isListening ? "Listening..." : "Tap to Ask"}
                     </button>
                 </div>
+                )}
 
+                {activeTab === 'about' && (
                 <div className="info-card">
                     <h3>ℹ️ About Pill-AI</h3>
                     <details>
@@ -802,6 +805,7 @@ function App() {
                         </ul>
                     </details>
                 </div>
+                )}
 
             </div> {/* closes app-container */}
         </div>
