@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getXP, addXP, calculateLevel } from '../utils/xp';
+import { getXP, addXP, calculateLevel } from './utils/xp';
 
 function LearnCard({ hasReminder, reminderDrug, setActiveTab }) {
     const [quiz, setQuiz] = useState(null);
