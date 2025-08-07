@@ -6,6 +6,8 @@ import { onMessage, getMessaging } from 'firebase/messaging'; // already there
 import Fuse from 'fuse.js';
 import { medicineNames } from './medicineList';
 import { useSwipeable } from 'react-swipeable';
+import LearnCard from './LearnCard';
+
 
 // 💊 TrackCard Component
 
@@ -29,7 +31,7 @@ function App() {
     const [isListening, setIsListening] = useState(false);
     const [activeTab, setActiveTab] = useState('ask'); // Options: ask, track, voice, about
 
-    const tabOrder = ['ask', 'track', 'voice', 'about'];
+    const tabOrder = ['ask', 'track', 'voice', 'learn', 'about'];
     const handlers = useSwipeable({
         onSwipedLeft: () => {
             const currentIndex = tabOrder.indexOf(activeTab);
@@ -355,6 +357,7 @@ function App() {
                     <button className={activeTab === 'ask' ? 'tab active' : 'tab'} onClick={() => setActiveTab('ask')}>💬 Chat</button>
                     <button className={activeTab === 'track' ? 'tab active' : 'tab'} onClick={() => setActiveTab('track')}>💊 Track</button>
                     <button className={activeTab === 'voice' ? 'tab active' : 'tab'} onClick={() => setActiveTab('voice')}>🎙️ Voice</button>
+                    <button className={activeTab === 'learn' ? 'tab active' : 'tab'} onClick={() => setActiveTab('learn')}>📘 Learn</button>
                     <button className={activeTab === 'about' ? 'tab active' : 'tab'} onClick={() => setActiveTab('about')}>ℹ️ About</button>
                 </div>
             
@@ -768,6 +771,15 @@ function App() {
                     </button>
                 </div>
                 )}
+
+                {activeTab === 'learn' && (
+                <LearnCard
+                    hasReminder={hasReminder}
+                    reminderDrug={reminderDrug}
+                    setActiveTab={setActiveTab}
+                />
+                )}
+
                 {activeTab === 'about' && (
                 <div className="card about-card">
                     <h3>ℹ️ About Pill-AI</h3>
