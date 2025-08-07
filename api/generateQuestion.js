@@ -3,7 +3,7 @@
 import OpenAI from "openai";
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY, // Must be set in your Vercel project
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
 export default async function handler(req, res) {
@@ -18,6 +18,8 @@ export default async function handler(req, res) {
   }
 
   try {
+    console.log("🧠 Requested quiz for:", medicine);
+
     const prompt = `
 Generate ONE beginner-friendly multiple-choice question based on official NZ Consumer Medicine Information about the medicine "${medicine}". The question should teach the user something useful, such as:
 - Why it's important
@@ -49,17 +51,24 @@ Respond ONLY with a JSON object using this exact format:
       ],
     });
 
-    // Try to extract and parse JSON from the result
-    const text = response.choices[0]?.message?.content || "";
-    const jsonStart = text.indexOf("{");
-    const jsonEnd = text.lastIndexOf("}") + 1;
+    const rawOutput = response.choices[0]?.message?.content || "";
+    console.log("🧾 Raw OpenAI response:", rawOutput);
 
-    const rawJson = text.slice(jsonStart, jsonEnd);
+    const jsonStart = rawOutput.indexOf("{");
+    const jsonEnd = rawOutput.lastIndexOf("}") + 1;
+    const jsonSlice = rawOutput.slice(jsonStart, jsonEnd);
 
-    const quiz = JSON.parse(rawJson);
+    let quiz;
+    try {
+      quiz = JSON.parse(jsonSlice);
+    } catch (jsonError) {
+      console.error("❌ Failed to parse OpenAI JSON:", jsonError);
+      console.log("🧾 Raw response (for debug):", rawOutput);
+      return res.status(500).json({ error: "OpenAI response was not valid JSON" });
+    }
 
     if (!quiz.question || !quiz.choices || !quiz.answer) {
-      return res.status(422).json({ error: "Invalid format from OpenAI" });
+      return res.status(422).json({ error: "Incomplete quiz format" });
     }
 
     return res.status(200).json(quiz);
