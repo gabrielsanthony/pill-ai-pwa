@@ -201,6 +201,15 @@ input[type="text"], select {
   .language-select select {
     width: 100%;
   }
+   .card {
+    padding: 16px;
+    font-size: 1rem;
+  }
+}
+
+.card:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  transition: box-shadow 0.2s ease-in-out;
 }
 
 .cancel-button.small {
@@ -263,13 +272,57 @@ input[type="text"], select {
   margin-top: 1rem;
 }
 
+.card {
+  border-radius: 12px;
+  padding: 20px;
+  margin: 20px 0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  text-align: left;
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+
 .voice-card {
-  background-color: #fffaf0;
+  background-color: #e6f7f7;
+  color: #1a1a1a;
+  border-left: 6px solid #008080;
   padding: 16px;
   border-radius: 12px;
   border: 1px solid #ffd8a8;
   text-align: center;
   margin-top: 24px;
+}
+
+/* ASK 💬 card */
+.ask-card {
+  background-color: #ffffff; /* white */
+  color: #000000;
+  border-left: 6px solid #f58025; /* orange accent */
+}
+
+/* TRACK 💊 card */
+.track-card {
+  background-color: #fdf5e6; /* light orange cream */
+  color: #1a1a1a;
+  border-left: 6px solid #f58025;
+}
+
+/* VOICE 🎙 card */
+
+/* ABOUT ℹ card */
+.about-card {
+  background-color: #f5f5f5; /* soft gray */
+  color: #1a1a1a;
+  border-left: 6px solid #cccccc;
+}
+
+.card h2 {
+  font-size: 1.25rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 0.25rem;
 }
 
 .mic-button {

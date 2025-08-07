@@ -360,7 +360,7 @@ function App() {
                 </div>
             {activeTab === 'ask' && (
                 <form
-                    className="question-card"
+                    className="card ask-card"
                     onSubmit={async (e) => {
                         e.preventDefault(); // ⛔ Prevent page reload on Enter
 
@@ -433,7 +433,8 @@ function App() {
                     )}
                 </form>
                 )}
-
+                {activeTab === 'track' && (
+                <div className="card track-card">
                 {showReminderForm && (
                     <div className="reminder-form">
                         <h3>⏰ Set a Medication Reminder</h3>
@@ -746,6 +747,8 @@ function App() {
                         <p>You've completed all your scheduled doses. Keep up the good work!</p>
                     </div>
                 )}
+                  </div>
+                )}
 
                 {activeTab === 'voice' && (
                 <div className="card voice-card">
@@ -764,9 +767,8 @@ function App() {
                     </button>
                 </div>
                 )}
-
                 {activeTab === 'about' && (
-                <div className="info-card">
+                <div className="card about-card">
                     <h3>ℹ️ About Pill-AI</h3>
                     <details>
                         <summary>🧪 Instructions – Click to expand</summary>
