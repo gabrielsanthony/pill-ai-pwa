@@ -15,7 +15,6 @@ body {
   padding: 1rem;
   box-sizing: border-box;
 }
-
 .header {
   display: flex;
   justify-content: flex-start; /* Align logo to the left */
@@ -196,12 +195,10 @@ input[type="text"], select {
   .language-select select {
     width: 100%;
   }
-   .card {
-    padding: 16px;
-    width: 90%;
-    font-size: 1rem;
-    transition: transform 0.3s ease;
-  }
+ .card {
+  padding: 16px;
+  font-size: 1rem;
+}
 }
 .card:hover {
   box-shadow: 0 2px 8px rgba(0,0,0,0.12);
@@ -266,26 +263,21 @@ input[type="text"], select {
 .info-card details + details {
   margin-top: 1rem;
 }
-
 .card {
+  width: 100%;
+  max-width: 640px; /* 📱💻 Keeps it readable on desktops */
+  margin: 20px auto; /* Center horizontally */
   border-radius: 12px;
   padding: 20px;
-  margin: 20px 0;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
   text-align: left;
   font-size: 1.05rem;
   line-height: 1.6;
 }
-
 .voice-card {
-  background-color: #e6f7f7;
+  background-color: #e6f7f7; /* light teal */
   color: #000000;
   border-left: 6px solid #f58025; /* orange accent */
-  padding: 16px;
-  border-radius: 12px;
-  border: 1px solid #ffd8a8;
-  text-align: center;
-  margin-top: 24px;
 }
 
 /* ASK 💬 card */
