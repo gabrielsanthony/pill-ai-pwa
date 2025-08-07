@@ -9,7 +9,6 @@ import { useSwipeable } from 'react-swipeable';
 
 // 💊 TrackCard Component
 
-
 function App() {
     const [language, setLanguage] = useState('English');
     const [question, setQuestion] = useState('');
@@ -358,6 +357,8 @@ function App() {
                     <button className={activeTab === 'voice' ? 'tab active' : 'tab'} onClick={() => setActiveTab('voice')}>🎙️ Voice</button>
                     <button className={activeTab === 'about' ? 'tab active' : 'tab'} onClick={() => setActiveTab('about')}>ℹ️ About</button>
                 </div>
+            
+            <div {...handlers} className="swipe-wrapper">
             {activeTab === 'ask' && (
                 <form
                     className="card ask-card"
@@ -808,6 +809,7 @@ function App() {
                     </details>
                 </div>
                 )}
+                </div>
 
             </div> {/* closes app-container */}
         </div>

@@ -5,12 +5,15 @@ body {
   color: #333;
 }
 
+/* This makes sure the whole app container fills the screen */
 .app-container {
-  max-width: 1000px;
-  width: 90%; /* makes it fluid */
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center; /* this vertically centers the contents */
+  min-height: 100vh; /* ensures the container stretches full screen height */
+  padding: 1rem;
+  box-sizing: border-box;
 }
 
 .header {
@@ -159,7 +162,6 @@ input[type="text"], select {
   padding: 1rem;
   margin-bottom: 2rem;
 }
-
 .language-select {
   font-size: 0.95rem;
   display: flex;
@@ -168,50 +170,43 @@ input[type="text"], select {
   margin-left: auto;
   text-align: left;
 }
-
 .language-select label {
   font-weight: bold;
   margin-bottom: 0.25rem;
 }
-
-
 .language-select select {
   margin-top: 0.3rem;
   padding: 0.5rem;
   font-size: 0.95rem;
 }
-
 @media screen and (max-width: 600px) {
   .header {
     flex-direction: column;
     align-items: flex-start;
   }
-
   .logo {
     width: 160px;
     margin-bottom: 0.5rem;
   }
-
   .language-select {
     width: 100%;
     align-items: flex-start;
     margin-top: 0.5rem;
   }
-
   .language-select select {
     width: 100%;
   }
    .card {
     padding: 16px;
+    width: 90%;
     font-size: 1rem;
+    transition: transform 0.3s ease;
   }
 }
-
 .card:hover {
   box-shadow: 0 2px 8px rgba(0,0,0,0.12);
   transition: box-shadow 0.2s ease-in-out;
 }
-
 .cancel-button.small {
   font-size: 0.85rem;
   padding: 0.4rem 0.8rem;
@@ -284,8 +279,8 @@ input[type="text"], select {
 
 .voice-card {
   background-color: #e6f7f7;
-  color: #1a1a1a;
-  border-left: 6px solid #008080;
+  color: #000000;
+  border-left: 6px solid #f58025; /* orange accent */
   padding: 16px;
   border-radius: 12px;
   border: 1px solid #ffd8a8;
@@ -303,19 +298,15 @@ input[type="text"], select {
 /* TRACK 💊 card */
 .track-card {
   background-color: #fdf5e6; /* light orange cream */
-  color: #1a1a1a;
+  color: #000000;
   border-left: 6px solid #f58025;
 }
-
-/* VOICE 🎙 card */
-
 /* ABOUT ℹ card */
 .about-card {
   background-color: #f5f5f5; /* soft gray */
-  color: #1a1a1a;
+  color: #000000;
   border-left: 6px solid #cccccc;
 }
-
 .card h2 {
   font-size: 1.25rem;
   font-weight: bold;
@@ -324,7 +315,6 @@ input[type="text"], select {
   border-bottom: 1px solid #ddd;
   padding-bottom: 0.25rem;
 }
-
 .mic-button {
   background-color: #ff6600; /* High contrast orange */
   color: white;
@@ -337,13 +327,14 @@ input[type="text"], select {
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
   transition: background-color 0.3s, transform 0.2s;
 }
-
 .mic-button:hover {
   background-color: #cc5200;
   transform: scale(1.05);
 }
-
 .mic-button:focus {
   outline: 4px solid #ffd700; /* Yellow outline for keyboard users */
   outline-offset: 4px;
+}
+.swipe-wrapper {
+  width: 100%;
 }
