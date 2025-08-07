@@ -10,7 +10,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center; /* this vertically centers the contents */
+  justify-content: flex-start; /* this vertically centers the contents */
   min-height: 100vh; /* ensures the container stretches full screen height */
   padding: 1rem;
   box-sizing: border-box;
@@ -47,6 +47,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: stretch;
+  margin-bottom: 1.5rem;
 }
 
 input[type="text"], select {
@@ -199,6 +200,29 @@ input[type="text"], select {
   padding: 16px;
   font-size: 1rem;
 }
+.cancel-button,
+.mic-button {
+  width: 100%;
+  font-size: 1.2rem;
+  padding: 1.1rem;
+  margin-top: 1rem;
+}
+
+.question-input,
+input[type="text"],
+select {
+  width: 100%;
+  font-size: 1.1rem;
+  padding: 1rem;
+  margin-top: 0.5rem;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  font-size: 1.1rem;
+  padding: 0.9rem;
+}
 }
 .card:hover {
   box-shadow: 0 2px 8px rgba(0,0,0,0.12);
@@ -273,6 +297,7 @@ input[type="text"], select {
   text-align: left;
   font-size: 1.05rem;
   line-height: 1.6;
+  margin-bottom: 2rem;
 }
 .voice-card {
   background-color: #e6f7f7; /* light teal */
@@ -285,6 +310,13 @@ input[type="text"], select {
   background-color: #ffffff; /* white */
   color: #000000;
   border-left: 6px solid #f58025; /* orange accent */
+}
+.tab-bar {
+  margin-bottom: 1rem;
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 /* TRACK 💊 card */
