@@ -13,33 +13,34 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
+/* --- Short, encouraging one-liners --- */
+const POSITIVE_LINES = [
+  "You’ve got this! 🙌",
+  "Small steps add up. ✨",
+  "Consistency matters. 💪",
+  "Your health is worth it. 💚",
+  "Nice work staying on track! ✅",
+  "Tiny pill, big progress. 🌱",
+  "Strong tomorrow starts now. 🔆",
+  "One minute for your future. ⏳",
+  "Keep the streak going! 🔥",
+  "You’re worth the effort. 🌟",
+  "Small step, huge impact. 🚀",
+   "Your health, your win. 🏆"
+];
+const pickLine = () => POSITIVE_LINES[Math.floor(Math.random() * POSITIVE_LINES.length)];
+
 messaging.onBackgroundMessage(function(payload) {
   console.log('[firebase-messaging-sw.js] Background message received:', payload);
   
   const notificationTitle = payload.notification?.title || 'Pill-AI Reminder';
+  const baseBody = payload.notification?.body || 'You have a medication to take!';
+  const encouragement = payload.data?.encouragement || pickLine();
+
   const notificationOptions = {
-    body: payload.notification?.body || 'You have a medication to take!',
+    body: `${baseBody} ${encouragement}`,   // 👈 append the positive line
     icon: '/icon-192x192.png'
   };
 
-self.registration.showNotification(notificationTitle, notificationOptions);
+  self.registration.showNotification(notificationTitle, notificationOptions);
 });
-
-// ✅ Ensures push always shows notification
-//self.addEventListener('push', function (event) {
-//  const payload = event.data?.json();
-//  console.log('[firebase-messaging-sw.js] Push event received:', payload);
-
- // const title = payload?.notification?.title || '💊 Pill Reminder';
- // const body = payload?.notification?.body || 'Time to take your medicine';
-
- // const options = {
- //   body: body,
- //   icon: '/icon-192x192.png',
- //   requireInteraction: true,
- // };
-
- // event.waitUntil(
- //   self.registration.showNotification(title, options)
- // );
-//});

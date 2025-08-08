@@ -314,10 +314,11 @@ select {
   line-height: 1.6;
   margin-bottom: 2rem;
 }
-.voice-card {
-  background-color: #e6f7f7; /* light teal */
-  color: #000000;
-  border-left: 6px solid #f58025; /* orange accent */
+/* Voice card – match other cards */
+.card.voice-card {
+  background-color: #ffffff;   /* white, like Ask/Track/About */
+  color: #000;
+  border-left: 6px solid #f58025;
 }
 
 /* ASK 💬 card */

@@ -7,6 +7,8 @@ import Fuse from 'fuse.js';
 import { medicineNames } from './medicineList';
 import { useSwipeable } from 'react-swipeable';
 import LearnCard from './LearnCard';
+import { NUDGE_MS, buildNudgeTitle, buildNudgeBody } from './notifications/nudgeCopy';
+import { scheduleReminder, cancelReminder } from './notifications/api';
 
 
 // 💊 TrackCard Component
@@ -556,6 +558,7 @@ function App() {
                                 }
 
                                 const remindersToSchedule = [];
+                                const mainReminders = [];
                                 const now = new Date();
                                 const daysToSchedule = isLongTerm ? 30 : durationDays;
 
@@ -567,43 +570,56 @@ function App() {
                                             const scheduled = new Date(now);
                                             scheduled.setDate(scheduled.getDate() + dayOffset);
                                             scheduled.setHours(hour, minute, 0, 0);
+                                         if (scheduled > now) {
+        // MAIN reminder
+        const main = {
+          token,
+          title: `🕒 Pill Reminder: ${reminderDrug}`,
+          body: `Take ${reminderDrug} at ${time}`,
+          sendAt: scheduled.toISOString(),
+          tag: `dose:${scheduled.toISOString()}`
+        };
+        remindersToSchedule.push(main);
+        mainReminders.push(main);
 
-                                            if (scheduled > now) {
-                                                remindersToSchedule.push({
-                                                    token,
-                                                    title: `🕒 Pill Reminder: ${reminderDrug}`,
-                                                    body: `Take ${reminderDrug} at ${time}`,
-                                                    sendAt: scheduled.toISOString(),
-                                                });
-                                            }
-                                        }
-                                    }
+        // NUDGE (dose + NUDGE_MS) — modular copy
+        const nudgeDate = new Date(scheduled.getTime() + NUDGE_MS);
+        if (nudgeDate > now) {
+          const nudge = {
+            token,
+            title: buildNudgeTitle(reminderDrug),
+            body: buildNudgeBody(reminderDrug),
+            sendAt: nudgeDate.toISOString(),
+            tag: `nudge:${scheduled.toISOString()}`
+          };
+          remindersToSchedule.push(nudge);
+        }
+      }
+    }
+  }
+                                           
 
-                                    for (const reminder of remindersToSchedule) {
-                                        try {
-                                            const response = await fetch("/api/scheduleReminder", {
-                                                method: "POST",
-                                                headers: { "Content-Type": "application/json" },
-                                                body: JSON.stringify(reminder),
-                                            });
+                                   // POST ALL reminders (main + nudge) via helper
+  for (const reminder of remindersToSchedule) {
+    try {
+      await scheduleReminder(reminder);
+    } catch (err) {
+      console.error("❌ Failed to save reminder:", err);
+    }
+  }
 
-                                            const result = await response.json();
-                                            console.log("✅ Reminder saved:", result);
-                                        } catch (err) {
-                                            console.error("❌ Failed to save reminder:", err);
-                                        }
-                                    }
+  // 🧠 Store ONLY main dose times for the app's logic
+  const doseTimestamps = mainReminders.map(r => r.sendAt);
+  localStorage.setItem("doseSchedule", JSON.stringify(doseTimestamps));
+  console.log("🧠 Stored dose timestamps (main only):", doseTimestamps);
 
-                                    // ✅ Save dose timestamps locally for button logic
-                                    const doseTimestamps = remindersToSchedule.map(r => r.sendAt);
-                                    localStorage.setItem("doseSchedule", JSON.stringify(doseTimestamps));
-                                    console.log("🧠 Stored dose timestamps:", doseTimestamps);
+  alert(`✅ ${remindersToSchedule.length} reminders scheduled for ${reminderDrug}`);
+} catch (err) {
+  console.error("❌ Reminder scheduling error:", err);
+  alert("❌ Error while saving reminder");
+}
 
-                                    alert(`✅ ${remindersToSchedule.length} reminders scheduled for ${reminderDrug}`);
-                                } catch (err) {
-                                    console.error("❌ Reminder scheduling error:", err);
-                                    alert("❌ Error while saving reminder");
-                                }
+
                                 setShowReminderForm(false); // ✅ Add this line here
 
                             }}
@@ -654,23 +670,22 @@ function App() {
                                 onClick={async () => {
                                     if (isCourseComplete || !nextDoseTime) return;
 
-                                    const token = await requestPermissionAndGetToken();
+                                const token = await requestPermissionAndGetToken();
 
-                                    // 📵 Cancel the related push notification
-                                    try {
-                                        await fetch('/api/cancelSingleReminder', {
-                                            method: 'POST',
-                                            headers: {
-                                                'Content-Type': 'application/json',
-                                            },
-                                            body: JSON.stringify({
-                                                token,
-                                                timestamp: nextDoseTime.toISOString(),
-                                            }),
-                                        });
-                                    } catch (err) {
-                                        console.error("❌ Failed to cancel push notification:", err);
-                                    }
+// Cancel the main reminder via helper
+try {
+  await cancelReminder({ token, timestamp: nextDoseTime.toISOString() });
+} catch (err) {
+  console.error("❌ Failed to cancel main reminder:", err);
+}
+
+// Cancel the 2h nudge tied to this dose
+try {
+  const nudgeTs = new Date(new Date(nextDoseTime).getTime() + NUDGE_MS).toISOString();
+  await cancelReminder({ token, timestamp: nudgeTs });
+} catch (err) {
+  console.warn("⚠️ Could not cancel nudge (maybe already delivered).", err);
+}
 
                                     const takenList = [...takenTimestamps, nextDoseTime.toISOString()];
                                     const updated = medsTaken + 1;
