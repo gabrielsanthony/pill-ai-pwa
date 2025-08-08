@@ -1,7 +1,7 @@
 // src/notifications/nudgeCopy.js
 
 // Set to 2 * 60 * 1000 for testing, then switch back to 2 * 60 * 60 * 1000
-export const NUDGE_MS = 2 * 60 * 60 * 1000;
+export const NUDGE_MS = 2 * 60 * 1000;
 
 const ENCOURAGEMENTS = [
   "You’ve got this! 🙌",
