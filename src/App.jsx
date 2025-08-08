@@ -10,6 +10,14 @@ import LearnCard from './LearnCard';
 import { NUDGE_MS, buildNudgeTitle, buildNudgeBody } from './notifications/nudgeCopy';
 import { scheduleReminder, cancelReminder } from './notifications/api';
 
+const getNudgeMap = () => {
+  try {
+    return JSON.parse(localStorage.getItem('nudgeMap') || '{}');
+  } catch {
+    return {};
+  }
+};
+const setNudgeMap = (m) => localStorage.setItem('nudgeMap', JSON.stringify(m));
 
 // 💊 TrackCard Component
 
@@ -543,8 +551,6 @@ function App() {
                                     dailyTimes
                                 }));
 
-                                console.log("🧠 Saved to localStorage:", reminderInfo);
-
                                 // 🧹 Reset medsTaken progress
                                 setMedsTaken(0);
                                 setIsCourseComplete(false); // 🔄 Reset progress bar visibility for new reminder
@@ -557,10 +563,13 @@ function App() {
                                     return;
                                 }
 
-                                const remindersToSchedule = [];
-                                const mainReminders = [];
+
                                 const now = new Date();
                                 const daysToSchedule = isLongTerm ? 30 : durationDays;
+
+                                const remindersToSchedule = [];
+                                const mainReminders = [];
+                                const mapUpdates = {}; // ✅ NEW: build doseISO -> nudgeISO map
 
                                 try {
                                     for (let dayOffset = 0; dayOffset < daysToSchedule; dayOffset++) {
@@ -570,42 +579,43 @@ function App() {
                                             const scheduled = new Date(now);
                                             scheduled.setDate(scheduled.getDate() + dayOffset);
                                             scheduled.setHours(hour, minute, 0, 0);
-                                         if (scheduled > now) {
-        // MAIN reminder
-        const main = {
-          token,
-          title: `🕒 Pill Reminder: ${reminderDrug}`,
-          body: `Take ${reminderDrug} at ${time}`,
-          sendAt: scheduled.toISOString(),
-          tag: `dose:${scheduled.toISOString()}`
-        };
-        remindersToSchedule.push(main);
-        mainReminders.push(main);
+                                        
+    if (scheduled > now) {
+  const mainISO = scheduled.toISOString(); // 👈 capture main ISO once
 
-        // NUDGE (dose + NUDGE_MS) — modular copy
-        const nudgeDate = new Date(scheduled.getTime() + NUDGE_MS);
-        if (nudgeDate > now) {
-          const nudge = {
-            token,
-            title: buildNudgeTitle(reminderDrug),
-            body: buildNudgeBody(reminderDrug),
-            sendAt: nudgeDate.toISOString(),
-            tag: `nudge:${scheduled.toISOString()}`
-          };
-          remindersToSchedule.push(nudge);
-        }
-      }
-    }
+  // MAIN reminder
+  const main = {
+    token,
+    title: `🕒 Pill Reminder: ${reminderDrug}`,
+    body: `Take ${reminderDrug} at ${time}`,
+    sendAt: mainISO,
+    tag: `dose:${mainISO}`
+  };
+  remindersToSchedule.push(main);
+  mainReminders.push(main);
+
+  // NUDGE (dose + NUDGE_MS)
+  const nudgeDate = new Date(scheduled.getTime() + NUDGE_MS);
+  if (nudgeDate > now) {
+    const nudgeISO = nudgeDate.toISOString(); // 👈 capture nudge ISO
+    const nudge = {
+      token,
+      title: buildNudgeTitle(reminderDrug),
+      body: buildNudgeBody(reminderDrug),
+      sendAt: nudgeISO,
+      tag: `nudge:${mainISO}`
+    };
+    remindersToSchedule.push(nudge);
+
+    // 👇 record the mapping main -> nudge
+    mapUpdates[mainISO] = nudgeISO;
   }
-                                           
-
-                                   // POST ALL reminders (main + nudge) via helper
-  for (const reminder of remindersToSchedule) {
-    try {
-      await scheduleReminder(reminder);
-    } catch (err) {
-      console.error("❌ Failed to save reminder:", err);
+}
     }
+  }                                      
+                                   // POST ALL reminders (main + nudge) via helper
+  for (const r of remindersToSchedule) {
+      await scheduleReminder(r);
   }
 
   // 🧠 Store ONLY main dose times for the app's logic
@@ -613,7 +623,11 @@ function App() {
   localStorage.setItem("doseSchedule", JSON.stringify(doseTimestamps));
   console.log("🧠 Stored dose timestamps (main only):", doseTimestamps);
 
+ // ✅ Save the main->nudge mapping to state (your useEffect will sync it to localStorage)
+  setNudgeMap(prev => ({ ...prev, ...mapUpdates }));
+
   alert(`✅ ${remindersToSchedule.length} reminders scheduled for ${reminderDrug}`);
+  setShowReminderForm(false);
 } catch (err) {
   console.error("❌ Reminder scheduling error:", err);
   alert("❌ Error while saving reminder");
