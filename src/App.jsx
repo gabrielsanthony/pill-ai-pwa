@@ -624,7 +624,7 @@ function App() {
   console.log("🧠 Stored dose timestamps (main only):", doseTimestamps);
 
  // ✅ Save the main->nudge mapping to state (your useEffect will sync it to localStorage)
-  setNudgeMap(prev => ({ ...prev, ...mapUpdates }));
+setNudgeMap(prev => ({ ...prev, ...mapUpdates }));
 
   alert(`✅ ${remindersToSchedule.length} reminders scheduled for ${reminderDrug}`);
   setShowReminderForm(false);
