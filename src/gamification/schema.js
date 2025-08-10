@@ -1,5 +1,13 @@
 // src/gamification/schema.js
 // Single source of truth for Pill‑AI gamification
+// at the top of src/gamification/schema.js
+import placeboImg   from '../assets/avatars/placebo.png';
+import firstAidImg  from '../assets/avatars/first-aid.png';
+import heartbeatImg from '../assets/avatars/heartbeat.png';
+import lifeForceImg from '../assets/avatars/life-force.png';
+import panaceaImg   from '../assets/avatars/panacea.png';
+
+
 
 export const BADGE_CATEGORIES = {
   STREAK: 'streak',
@@ -31,21 +39,21 @@ export const BADGES_BY_CATEGORY = BADGES.reduce((acc, b) => {
 }, {});
 
 // ---- Avatars (XP-gated cosmetics; users can switch any unlocked) ----
-// image paths are suggestions—update to your actual asset paths
 export const AVATARS = [
-  { id: 'placebo',   name: 'Placebo',   xpCost: 0,    img: '/assets/avatars/placebo.png',
+  { id: 'placebo',    name: 'Placebo',    xpCost: 0,    img: placeboImg,
     description: 'Harmless and humble — your journey to mastery begins.' },
-  { id: 'first_aid', name: 'First Aid', xpCost: 50,   img: '/assets/avatars/first-aid.png',
+  { id: 'first_aid',  name: 'First Aid',  xpCost: 50,   img: firstAidImg,
     description: 'The first real step in healing — basic but dependable.' },
-  { id: 'heartbeat', name: 'Heartbeat', xpCost: 150,  img: '/assets/avatars/heartbeat.png',
+  { id: 'heartbeat',  name: 'Heartbeat',  xpCost: 150,  img: heartbeatImg,
     description: 'Steady and strong — you’re building healthy momentum.' },
-  { id: 'life_force',name: 'Life Force',xpCost: 400,  img: '/assets/avatars/life-force.png',
+  { id: 'life_force', name: 'Life Force', xpCost: 400,  img: lifeForceImg,
     description: 'Brimming with vitality — your health habits are powerful now.' },
-  { id: 'panacea',   name: 'Panacea',   xpCost: 1000, img: '/assets/avatars/panacea.png',
+  { id: 'panacea',    name: 'Panacea',    xpCost: 1000, img: panaceaImg,
     description: 'The ultimate cure — wisdom and wellness in perfect harmony.' },
 ];
 
 export const AVATARS_BY_ID = Object.fromEntries(AVATARS.map(a => [a.id, a]));
+
 
 // ---- XP Actions (repeatable) ----
 export const XP_ACTIONS = {
