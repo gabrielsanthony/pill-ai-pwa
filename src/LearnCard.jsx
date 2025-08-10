@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { getXP, addXP, calculateLevel } from './utils/xp.js';
+import { getXP, calculateLevel } from './utils/xp.js';
+import { recordEvent } from './gamification/actions';
 
 function LearnCard({ hasReminder, reminderDrug, setActiveTab }) {
     const [quiz, setQuiz] = useState(null);
@@ -48,10 +49,13 @@ function LearnCard({ hasReminder, reminderDrug, setActiveTab }) {
     function handleChoice(choice) {
         setSelected(choice);
         if (choice === quiz.answer) {
-            setFeedback("✅ Correct!");
-            const newXP = addXP(10);
-            setXp(newXP);
-            setLevel(calculateLevel(newXP));
+           setFeedback("✅ Correct!");
+           const res = recordEvent('quiz_correct'); // { awardedXP, newXP, skipped, skipReason }
+           if (!res.skipped && typeof res.newXP === 'number') {
+            setXp(res.newXP);
+            setLevel(calculateLevel(res.newXP));
+}
+
         } else {
             setFeedback(`❌ Incorrect. The correct answer was: ${quiz.answer}`);
         }
