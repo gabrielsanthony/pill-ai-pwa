@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getXP, calculateLevel } from './utils/xp.js';
-import { recordEvent } from './gamification/actions';
+import { recordEvent } from './gamification/actions.js';
 
 function LearnCard({ hasReminder, reminderDrug, setActiveTab }) {
     const [quiz, setQuiz] = useState(null);
