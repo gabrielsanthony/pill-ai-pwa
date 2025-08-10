@@ -1,4 +1,5 @@
-import { get, set } from '../lib/storage';
+// src/gamification/xp.js
+import { get, set } from '../lib/storage.js';
 
 const KEY = 'xp';
 let listeners = new Set();
@@ -15,7 +16,6 @@ export function addXP(amount = 0, reason = '') {
 }
 
 export function levelFromXP(xp) {
-  // 100 XP per level — adjust here if needed
   return Math.floor((xp ?? 0) / 100) + 1;
 }
 

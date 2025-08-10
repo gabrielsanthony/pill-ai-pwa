@@ -21,3 +21,7 @@ export function calculateLevel(xp) {
   if (xp < 300) return 3;
   return Math.floor(xp / 150) + 1;
 }
+
+// src/utils/xp.js
+export { getXP, addXP, levelFromXP as calculateLevel, subscribe } from '../gamification/xp.js';
+
