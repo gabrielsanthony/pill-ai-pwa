@@ -1,3 +1,4 @@
+import EarnCard from './EarnCard.jsx';
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import logo from './assets/pill-ai-logo.png'; // ✅ Updated image import
