@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { getXP, calculateLevel } from './utils/xp.js';
+import { getXP, calculateLevel, subscribe } from './utils/xp.js';
 import { recordEvent } from './gamification/actions.js';
 
 function LearnCard({ hasReminder, reminderDrug, setActiveTab }) {
     const [quiz, setQuiz] = useState(null);
     const [selected, setSelected] = useState(null);
     const [feedback, setFeedback] = useState('');
-    const [xp, setXp] = useState(0);
-    const [level, setLevel] = useState(1);
+    const [xp, setXp] = useState(() => getXP());
+    const [level, setLevel] = useState(() => calculateLevel(getXP()));
 
     // Load quiz on reminder change
     useEffect(() => {
@@ -39,11 +39,12 @@ function LearnCard({ hasReminder, reminderDrug, setActiveTab }) {
         fetchQuiz();
     }, [hasReminder, reminderDrug]);
 
-    // Load XP from localStorage on first render
     useEffect(() => {
-        const currentXP = getXP();
-        setXp(currentXP);
-        setLevel(calculateLevel(currentXP));
+    const unsub = subscribe((newXP) => {
+        setXp(newXP);
+        setLevel(calculateLevel(newXP));
+    });
+    return unsub; // cleanup on unmount
     }, []);
 
     function handleChoice(choice) {
