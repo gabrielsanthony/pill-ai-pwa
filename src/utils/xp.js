@@ -1,27 +1,28 @@
 // src/utils/xp.js
+// Shim that forwards to the new engine, with a one-time migration of legacy key.
 
-export function getXP() {
-    return parseInt(localStorage.getItem('pillAiXP') || '0');
+import { get, set } from '../lib/storage.js';
+
+// ---- one-time migration from legacy localStorage key "pillAiXP" ----
+const LEGACY_KEY = 'pillAiXP';
+try {
+  const legacy = localStorage.getItem(LEGACY_KEY);
+  if (legacy !== null) {
+    const legacyXP = parseInt(legacy || '0', 10) || 0;
+    // write into the new storage key "pillai:xp"
+    // (gamification/xp.js reads this via storage.get('xp'))
+    const current = get('xp', 0) ?? 0;
+    if (legacyXP > current) set('xp', legacyXP);
+    localStorage.removeItem(LEGACY_KEY);
+  }
+} catch (_) {
+  // ignore migration errors
 }
 
-export function setXP(value) {
-  localStorage.setItem('pillAiXP', value);
-}
-
-export function addXP(amount) {
-  const current = getXP();
-  const updated = current + amount;
-  setXP(updated);
-  return updated;
-}
-
-export function calculateLevel(xp) {
-  if (xp < 50) return 1;
-  if (xp < 150) return 2;
-  if (xp < 300) return 3;
-  return Math.floor(xp / 150) + 1;
-}
-
-// src/utils/xp.js
-export { getXP, addXP, levelFromXP as calculateLevel, subscribe } from '../gamification/xp.js';
-
+// ---- re-export the new engine ----
+export {
+  getXP,
+  addXP,
+  levelFromXP as calculateLevel,
+  subscribe,
+} from '../gamification/xp.js';
