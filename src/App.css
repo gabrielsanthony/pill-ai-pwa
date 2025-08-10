@@ -444,3 +444,76 @@ select {
   background: #fff6ec;
   border-color: #f58025;
 }
+/* ===== Earn card (avatars) ===== */
+.earn-card {
+  background: #ffffff;               /* match other cards */
+  border-left: 6px solid #f58025;    /* same orange accent */
+}
+
+.earn-card h3 {
+  margin-top: 0;
+  margin-bottom: 0.25rem;
+}
+
+.earn-card progress {
+  width: 100%;
+  margin: 0.25rem 0 1rem;
+}
+
+/* Avatar grid */
+.earn-card .avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+/* Avatar tile (button) */
+.earn-card .avatar-tile {
+  position: relative;
+  text-align: center;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  background: #fff;
+  cursor: pointer;
+  transition: box-shadow 120ms ease, border-color 120ms ease, transform 120ms ease;
+}
+
+.earn-card .avatar-tile:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  transform: translateY(-1px);
+}
+
+/* Selected state */
+.earn-card .avatar-tile.selected {
+  border: 2px solid #5b8cff;
+  box-shadow: 0 0 0 3px rgba(91,140,255,0.15);
+}
+
+/* Locked state */
+.earn-card .avatar-tile.locked {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+/* Tile image + labels */
+.earn-card .avatar-img {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+}
+
+.earn-card .avatar-name {
+  font-weight: 600;
+  margin-top: 6px;
+}
+
+.earn-card .avatar-sub {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+/* Generic disabled button look (just in case) */
+.earn-card button[disabled] {
+  cursor: not-allowed;
+}

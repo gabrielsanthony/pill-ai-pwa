@@ -51,7 +51,7 @@ function App() {
     setActiveTab(newTab);
     };
 
-    const tabOrder = ['ask', 'track', 'voice', 'learn', 'about'];
+    const tabOrder = ['ask', 'track', 'voice', 'learn', 'earn', 'about'];
     const handlers = useSwipeable({
     onSwipedLeft: () => {
         const i = tabOrder.indexOf(activeTab);
@@ -378,6 +378,7 @@ function App() {
                         <button className={activeTab === 'track' ? 'tab active' : 'tab'} onClick={() => goToTab('track')}>💊 Track</button>
                         <button className={activeTab === 'voice' ? 'tab active' : 'tab'} onClick={() => goToTab('voice')}>🎙️ Voice</button>
                         <button className={activeTab === 'learn' ? 'tab active' : 'tab'} onClick={() => goToTab('learn')}>📘 Learn</button>
+                        <button className={activeTab === 'earn' ? 'tab active' : 'tab'} onClick={() => goToTab('earn')}>🏆 Earn</button>
                         <button className={activeTab === 'about' ? 'tab active' : 'tab'} onClick={() => goToTab('about')}>ℹ️ About</button>
                 </div>
             
@@ -820,6 +821,8 @@ try {
                     setActiveTab={setActiveTab}
                 />
                 )}
+
+                {activeTab === 'earn' && <EarnCard />}
 
                 {activeTab === 'about' && (
                 <div className="card about-card">
