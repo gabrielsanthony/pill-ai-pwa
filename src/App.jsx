@@ -1,5 +1,5 @@
 import EarnCard from './EarnCard.jsx';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import logo from './assets/pill-ai-logo.png'; // ✅ Updated image import
 import { requestPermissionAndGetToken } from './firebase-notifications';
@@ -56,6 +56,20 @@ function App() {
     const [activeTab, setActiveTab] = useState('ask'); // Options: ask, track, voice, about
 
     const [slideDir, setSlideDir] = useState('right'); // 'left' or 'right'
+
+    // 🔔 In‑app toast state
+    const [toast, setToast] = useState(null);           // { title, body } or null
+    const [toastVisible, setToastVisible] = useState(false);
+    const toastTimerRef = useRef(null);
+
+    // Helper to show a toast for a few seconds
+    const TOAST_HIDE_MS = 6000;
+    function showToast(title, body) {
+    setToast({ title, body });
+    setToastVisible(true);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToastVisible(false), TOAST_HIDE_MS);
+    }
 
     const goToTab = (newTab) => {
     const oldIndex = tabOrder.indexOf(activeTab);
@@ -154,7 +168,7 @@ async function checkAndHandleOverdueDoses() {
   for (const mainISO of overdueList) {
     try {
       // Fire an "Overdue" notification ~5s from now so it queues reliably
-      const sendAt = new Date(Date.now() + 5000).toISOString();
+      const sendAt = new Date(Date.now() + 2 * 60 * 1000).toISOString();
       const title = `⏰ Overdue: ${reminderDrug || 'Your medication'}`;
       const body  = `You missed your scheduled dose. Tap to mark taken or get back on track.`;
 
@@ -403,6 +417,45 @@ useEffect(() => {
         setupNotifications();
     }, []);
 
+    // 📬 Foreground messages from Firebase (tab visible + focused)
+    useEffect(() => {
+    try {
+        const messaging = getMessaging();
+        const unsub = onMessage(messaging, (payload) => {
+        const title = payload?.notification?.title || payload?.data?.title || 'Reminder';
+        const body  = payload?.notification?.body  || payload?.data?.body  || '';
+        if (document.visibilityState === 'visible') {
+            showToast(title, body);
+        }
+        });
+        return () => unsub && unsub();
+    } catch (e) {
+        console.warn('[PILL-AI] onMessage unavailable:', e);
+    }
+    }, []);
+
+        // 📡 Messages forwarded from the Service Worker (push → postMessage)
+    useEffect(() => {
+    const onSwMessage = (evt) => {
+        if (evt?.data?.type === 'REMINDER') {
+        const p = evt.data.payload || {};
+        const title = p.title || 'Reminder';
+        const body  = p.body  || '';
+        if (document.visibilityState === 'visible') {
+            showToast(title, body);
+        }
+        }
+    };
+    if (navigator.serviceWorker?.addEventListener) {
+        navigator.serviceWorker.addEventListener('message', onSwMessage);
+    }
+    return () => {
+        if (navigator.serviceWorker?.removeEventListener) {
+        navigator.serviceWorker.removeEventListener('message', onSwMessage);
+        }
+    };
+    }, []);
+
     useEffect(() => {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
@@ -574,6 +627,37 @@ const nextDoseMs = nextDoseTime
                         </select>
                     </div>
                 </header>
+
+        {/* 🔔 In‑app toast (appears when the page is visible) */}
+        {toast && (
+        <div
+            role="status"
+            aria-live="polite"
+            style={{
+            position: 'fixed',
+            left: '50%',
+            top: '12px',
+            transform: 'translateX(-50%)',
+            minWidth: '260px',
+            maxWidth: '90vw',
+            padding: '12px 14px',
+            borderRadius: '10px',
+            background: 'rgba(0,0,0,0.85)',
+            color: 'white',
+            boxShadow: '0 6px 18px rgba(0,0,0,0.25)',
+            opacity: toastVisible ? 1 : 0,
+            transition: 'opacity 200ms ease',
+            zIndex: 9999
+            }}
+        >
+            <div style={{ fontWeight: 700, marginBottom: 4 }}>
+            {toast.title || 'Reminder'}
+            </div>
+            <div style={{ fontSize: 14 }}>
+            {toast.body || ''}
+            </div>
+        </div>
+        )}
 
                 <div className="tab-bar">
                      <button className={activeTab === 'ask' ? 'tab active' : 'tab'} onClick={() => goToTab('ask')}>💬 Chat</button>
