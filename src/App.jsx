@@ -20,6 +20,19 @@ const getNudgeMap = () => {
 };
 const setNudgeMap = (m) => localStorage.setItem('nudgeMap', JSON.stringify(m));
 
+// 🚨 Overdue bookkeeping
+const getOverdueMap = () => {
+  try { return JSON.parse(localStorage.getItem('overdueMap') || '{}'); }
+  catch { return {}; }
+};
+const setOverdueMap = (m) => localStorage.setItem('overdueMap', JSON.stringify(m));
+
+const getDoseSchedule = () => {
+  try { return JSON.parse(localStorage.getItem('doseSchedule') || '[]'); }
+  catch { return []; }
+};
+const getTakenSet = () => new Set(JSON.parse(localStorage.getItem('takenTimestamps') || '[]'));
+
 // 💊 TrackCard Component
 
 function App() {
@@ -100,15 +113,75 @@ function extractDuration(text) {
 
 
     // ✅ Only allow Meds Taken button if within 30 min of next dose
-    function isDoseWindowOpen() {
-        if (!nextDoseTime) return false;
-        const now = new Date().getTime();
-        const dose = new Date(nextDoseTime).getTime();
-        const diffMins = Math.abs((dose - now) / 1000 / 60);
+function isDoseWindowOpen() {
+  if (!nextDoseTime) return false;
+  const doseDate = nextDoseTime instanceof Date ? nextDoseTime : new Date(nextDoseTime);
+  const now = Date.now();
+  const diffMins = Math.abs((doseDate.getTime() - now) / 60000); // 60000 ms per minute
+  const key = doseDate.toISOString(); // matches how takenTimestamps are stored
+  return diffMins <= 30 && !takenTimestamps.includes(key);
+}
 
-        // Only allow within 30 minutes and if not already taken
-        return diffMins <= 30 && !takenTimestamps.includes(nextDoseTime.toISOString());
+// ✅ Find past-due, not-yet-taken doses and fire an "Overdue" push now
+async function checkAndHandleOverdueDoses() {
+  const schedule = getDoseSchedule();            // array of ISO strings (main reminder times)
+  if (!Array.isArray(schedule) || schedule.length === 0) return;
+
+  const takenSet = getTakenSet();                // ISO strings you already store
+  const overdueMap = getOverdueMap();            // doseISO -> true (already alerted)
+  const now = Date.now();
+
+  // Only consider overdue in the last 24h to avoid spamming very old entries
+  const cutoff = now - 24 * 60 * 60 * 1000;
+
+  // Find main dose timestamps that are past, not taken, and not already overdue-notified
+  const overdueList = schedule
+    .filter(ts => {
+      const t = new Date(ts).getTime();
+      return t <= now && t >= cutoff && !takenSet.has(ts) && !overdueMap[ts];
+    })
+    .sort((a, b) => new Date(a) - new Date(b));
+
+  if (overdueList.length === 0) return;
+
+  const token = await requestPermissionAndGetToken();
+  if (!token) {
+    console.warn('[PILL-AI] No push token; cannot send overdue notifications.');
+    return;
+  }
+
+  for (const mainISO of overdueList) {
+    try {
+      // Fire an "Overdue" notification ~5s from now so it queues reliably
+      const sendAt = new Date(Date.now() + 5000).toISOString();
+      const title = `⏰ Overdue: ${reminderDrug || 'Your medication'}`;
+      const body  = `You missed your scheduled dose. Tap to mark taken or get back on track.`;
+
+      await scheduleReminder({
+        token, title, body, sendAt, tag: `overdue:${mainISO}`,
+      });
+
+      // Optional: follow‑up nudge at 30 min (or NUDGE_MS if smaller)
+      const followDelay = Math.min(30 * 60 * 1000, NUDGE_MS);
+      const follow = new Date(Date.now() + followDelay).toISOString();
+      await scheduleReminder({
+        token,
+        title: `Still overdue: ${reminderDrug || 'dose'}`,
+        body: `If you’ve taken it, mark it in Pill‑AI. If not, please take it now (if safe).`,
+        sendAt: follow,
+        tag: `overdue-nudge:${mainISO}`,
+      });
+
+      // Mark this dose as alerted so we don't duplicate
+      overdueMap[mainISO] = true;
+    } catch (err) {
+      console.error('❌ Failed to schedule overdue notification for', mainISO, err);
     }
+  }
+
+  setOverdueMap(overdueMap);
+}
+
 
     function handleVoiceQuery(transcript) {
         console.log("🤖 Handling voice input:", transcript);
@@ -188,24 +261,53 @@ function extractDuration(text) {
         }
     }, [dailyTimes]);
 
-    useEffect(() => {
-        if (!nextDoseTime) return;
-        const interval = setInterval(() => {
-            const now = new Date();
-            const diff = nextDoseTime - now;
+// [PILL-AI] Live countdown
+useEffect(() => {
+  if (!nextDoseTime) return;
 
-            if (diff <= 0) {
-                setTimeRemaining('');
-                clearInterval(interval);
-            } else {
-                const mins = Math.floor((diff / 1000 / 60) % 60);
-                const hrs = Math.floor((diff / 1000 / 60 / 60));
-                setTimeRemaining(`${hrs}h ${mins}m remaining`);
-            }
-        }, 1000);
+  const tick = () => {
+    const target = nextDoseTime instanceof Date ? nextDoseTime : new Date(nextDoseTime);
+    const diff = target.getTime() - Date.now();
 
-        return () => clearInterval(interval);
-    }, [nextDoseTime]);
+    if (diff <= 0) {
+      setTimeRemaining('due now');
+      return;
+    }
+
+    const totalMin = Math.floor(diff / 60000);
+    const hrs = Math.floor(totalMin / 60);
+    const mins = totalMin % 60;
+    setTimeRemaining(`${hrs > 0 ? `${hrs}h ` : ''}${mins}m`);
+  };
+
+  tick(); // set immediately
+  const id = setInterval(tick, 1000);
+  return () => clearInterval(id);
+}, [nextDoseTime]);
+
+// [PILL-AI] If the current nextDoseTime is past, jump to the next scheduled dose
+useEffect(() => {
+  if (!nextDoseTime) return;
+  const doseTime = (nextDoseTime instanceof Date ? nextDoseTime : new Date(nextDoseTime)).getTime();
+  if (doseTime > Date.now()) return;
+
+  const schedule = JSON.parse(localStorage.getItem('doseSchedule') || '[]');
+  const next = schedule
+    .map(ts => new Date(ts))
+    .filter(d => d.getTime() > Date.now())
+    .sort((a, b) => a - b)[0];
+
+  if (next) {
+    setNextDoseTime(next);
+    localStorage.setItem('nextDoseTime', next.toISOString());
+  } else {
+    setNextDoseTime(null);
+    localStorage.removeItem('nextDoseTime');
+  }
+}, [timeRemaining, nextDoseTime]);
+
+
+
 
     // 🧠 Restore reminder info from localStorage on load
     useEffect(() => {
@@ -225,6 +327,23 @@ function extractDuration(text) {
             }
         }, 300);
     }, []);
+
+    // [PILL-AI] Restore nextDoseTime on load (or compute from doseSchedule)
+useEffect(() => {
+  const saved = localStorage.getItem('nextDoseTime');
+  if (saved) {
+    setNextDoseTime(new Date(saved)); // keep as Date object
+    return;
+  }
+  const schedule = JSON.parse(localStorage.getItem('doseSchedule') || '[]');
+  if (Array.isArray(schedule) && schedule.length) {
+    const next = schedule
+      .map(ts => new Date(ts))
+      .filter(d => d.getTime() > Date.now())
+      .sort((a, b) => a - b)[0];
+    if (next) setNextDoseTime(next);
+  }
+}, []);
 
 
     // ⬇️ ADD THIS BELOW your first useEffect block
@@ -297,6 +416,30 @@ function extractDuration(text) {
         // Store in window for global access
         window.recognition = recognition;
     }, []);
+
+    // ▶️ Run overdue catch-up on load
+useEffect(() => {
+  checkAndHandleOverdueDoses();
+}, []);
+
+// ⏱️ Re-check every minute (tab may be open but sleeping)
+useEffect(() => {
+  const id = setInterval(() => {
+    checkAndHandleOverdueDoses();
+  }, 60 * 1000);
+  return () => clearInterval(id);
+}, []);
+
+// 👀 Also re-check whenever the tab becomes active/visible
+useEffect(() => {
+  const onVis = () => {
+    if (document.visibilityState === 'visible') {
+      checkAndHandleOverdueDoses();
+    }
+  };
+  document.addEventListener('visibilitychange', onVis);
+  return () => document.removeEventListener('visibilitychange', onVis);
+}, []);
 
     const content = {
         English: {
@@ -658,6 +801,27 @@ function extractDuration(text) {
   // 🧠 Store ONLY main dose times for the app's logic
   const doseTimestamps = mainReminders.map(r => r.sendAt);
   localStorage.setItem("doseSchedule", JSON.stringify(doseTimestamps));
+
+  // ⏱️ [PILL-AI] Set initial next dose for the countdown
+try {
+  const upcoming = doseTimestamps
+    .map(ts => new Date(ts))
+    .filter(d => d.getTime() > Date.now())
+    .sort((a, b) => a - b)[0] || null;
+
+  if (upcoming) {
+    setNextDoseTime(upcoming);              // keep as Date object
+    setTimeRemaining('');                   // will be recalculated by the countdown effect
+    localStorage.setItem('nextDoseTime', upcoming.toISOString());
+  } else {
+    setNextDoseTime(null);
+    localStorage.removeItem('nextDoseTime');
+  }
+} catch (e) {
+  console.warn('[PILL-AI] Could not initialize nextDoseTime:', e);
+}
+
+
   console.log("🧠 Stored dose timestamps (main only):", doseTimestamps);
 
  // ✅ Save the main->nudge mapping to state (your useEffect will sync it to localStorage)
@@ -761,10 +925,12 @@ try {
                                         .find(d => d.getTime() > now);
 
                                     if (next) {
-                                        setNextDoseTime(next);
-                                    } else {
-                                        setNextDoseTime(null);
-                                    }
+  setNextDoseTime(next);
+  localStorage.setItem('nextDoseTime', next.toISOString());
+} else {
+  setNextDoseTime(null);
+  localStorage.removeItem('nextDoseTime');
+}
 
                                     // ✅ Check if course is done
                                     if (updated >= total) {
@@ -791,7 +957,11 @@ try {
                         </div>
                     ) : (
                         <div>
-                            <p>⏳ Next dose in: <strong>{timeRemaining}</strong></p>
+                            {nextDoseTime < Date.now() ? (
+  <p>⏰ Overdue: <strong>{Math.abs(Math.floor((nextDoseTime - Date.now()) / 60000))} min ago</strong></p>
+) : (
+  <p>⏳ Next dose in: <strong>{timeRemaining}</strong></p>
+)}
                             <button
                                 className="cancel-button small"
                                onClick={async () => {
