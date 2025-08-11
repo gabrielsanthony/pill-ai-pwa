@@ -76,6 +76,29 @@ function App() {
         return match ? match[0] : '';
         }
 
+        // 📅 Extract "for X days" / "X days" / "X weeks" / long-term phrases
+function extractDuration(text) {
+  if (!text || typeof text !== 'string') {
+    return { isLongTerm: false, days: null };
+  }
+
+  if (/\blong[-\s]?term\b/i.test(text) || /\bindefinite\b/i.test(text)) {
+    return { isLongTerm: true, days: null };
+  }
+
+  const wk = text.match(/\b(\d+)\s*weeks?\b/i);
+  if (wk) return { isLongTerm: false, days: parseInt(wk[1], 10) * 7 };
+
+  const d1 = text.match(/\bfor\s+(\d+)\s*days?\b/i);
+  if (d1) return { isLongTerm: false, days: parseInt(d1[1], 10) };
+
+  const d2 = text.match(/\b(\d+)\s*days?\b/i);
+  if (d2) return { isLongTerm: false, days: parseInt(d2[1], 10) };
+
+  return { isLongTerm: false, days: null };
+}
+
+
     // ✅ Only allow Meds Taken button if within 30 min of next dose
     function isDoseWindowOpen() {
         if (!nextDoseTime) return false;
@@ -206,13 +229,19 @@ function App() {
 
     // ⬇️ ADD THIS BELOW your first useEffect block
     useEffect(() => {
-        if (answer) {
-            const name = extractMedicineName(answer);
-            const duration = extractDuration(answer);
-            if (name) setReminderDrug(name);
-            if (duration) setDurationDays(duration);
-        }
-    }, [answer]);
+  if (answer) {
+    const name = extractMedicineName(answer);
+    const { isLongTerm: LT, days } = extractDuration(answer);
+
+    if (name) setReminderDrug(name);
+    if (LT) {
+      setIsLongTerm(true);
+    } else if (Number.isFinite(days) && days > 0) {
+      setIsLongTerm(false);
+      setDurationDays(days);
+    }
+  }
+}, [answer]);
 
     // ✅ Automatically request permission + save push token on app load
     useEffect(() => {
@@ -632,7 +661,8 @@ function App() {
   console.log("🧠 Stored dose timestamps (main only):", doseTimestamps);
 
  // ✅ Save the main->nudge mapping to state (your useEffect will sync it to localStorage)
-setNudgeMap(prev => ({ ...prev, ...mapUpdates }));
+const existingMap = getNudgeMap();
+setNudgeMap({ ...existingMap, ...mapUpdates });
 
   alert(`✅ ${remindersToSchedule.length} reminders scheduled for ${reminderDrug}`);
   setShowReminderForm(false);
@@ -764,31 +794,56 @@ try {
                             <p>⏳ Next dose in: <strong>{timeRemaining}</strong></p>
                             <button
                                 className="cancel-button small"
-                                onClick={async () => {
-                                    const token = await requestPermissionAndGetToken();
+                               onClick={async () => {
+  const token = await requestPermissionAndGetToken();
 
-                                    if (!token) {
-                                        alert("❌ Could not get push token. Nothing was cancelled.");
-                                        return;
-                                    }
+  if (!token) {
+    alert("❌ Could not get push token. Nothing was cancelled.");
+    return;
+  }
 
-                                    try {
-                                        const res = await fetch("/api/cancelReminder", {
-                                            method: "POST",
-                                            headers: { "Content-Type": "application/json" },
-                                            body: JSON.stringify({ token }),
-                                        });
+  try {
+    // 1) Ask backend to cancel ALL scheduled reminders for this token
+    const res = await fetch("/api/cancelReminders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+    });
 
-                                        const result = await res.json();
-                                        alert("🗑️ All reminders cancelled");
-                                    } catch (err) {
-                                        console.error("❌ Error cancelling reminders:", err);
-                                        alert("❌ Failed to cancel reminders");
-                                    }
-                                }}
-                            >
-                                🗑️ Cancel Reminders
-                            </button>
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      console.error("Cancel-all HTTP error:", res.status, txt);
+      alert("❌ Server error while cancelling reminders");
+      return;
+    }
+
+    // 2) Clear local state and storage so UI updates immediately
+    localStorage.removeItem("activeReminder");
+    localStorage.removeItem("doseSchedule");
+    localStorage.removeItem("takenTimestamps");
+    localStorage.removeItem("medsTaken");
+
+    setShowReminderForm(false);
+    setReminderDrug("");
+    setIsLongTerm(false);
+    setDurationDays(7);
+    setTimesPerDay(1);
+    setDailyTimes([""]);
+    setMedsTaken(0);
+    setTakenTimestamps([]);
+    setIsCourseComplete(false);
+    setNextDoseTime(null);
+    setTimeRemaining("");
+
+    alert("🗑️ All reminders cancelled");
+  } catch (err) {
+    console.error("❌ Error cancelling reminders:", err);
+    alert("❌ Failed to cancel reminders");
+  }
+}}
+>
+    🗑️ Cancel Reminders
+  </button>
                         </div>
                     )}
                 </div>
