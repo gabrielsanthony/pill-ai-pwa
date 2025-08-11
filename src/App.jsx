@@ -65,6 +65,7 @@ function App() {
     };
 
     const tabOrder = ['ask', 'track', 'voice', 'learn', 'earn', 'about'];
+
     const handlers = useSwipeable({
     onSwipedLeft: () => {
         const i = tabOrder.indexOf(activeTab);
@@ -533,6 +534,11 @@ useEffect(() => {
         </div>
     );
 
+
+const nextDoseMs = nextDoseTime
+  ? (nextDoseTime instanceof Date ? nextDoseTime.getTime() : new Date(nextDoseTime).getTime())
+  : null;
+
     return (
         <div className="main-wrapper">
             <div className="app-container">
@@ -956,65 +962,67 @@ try {
                             </button>
                         </div>
                     ) : (
-                        <div>
-                            {nextDoseTime < Date.now() ? (
-  <p>⏰ Overdue: <strong>{Math.abs(Math.floor((nextDoseTime - Date.now()) / 60000))} min ago</strong></p>
-) : (
-  <p>⏳ Next dose in: <strong>{timeRemaining}</strong></p>
-)}
-                            <button
-                                className="cancel-button small"
-                               onClick={async () => {
-  const token = await requestPermissionAndGetToken();
+<div>
+  {nextDoseMs === null ? (
+    <p>⏳ Next dose: <strong>not set</strong></p>
+  ) : nextDoseMs < Date.now() ? (
+    <p>⏰ Overdue: <strong>{Math.max(0, Math.floor((Date.now() - nextDoseMs) / 60000))} min ago</strong></p>
+  ) : (
+    <p>⏳ Next dose in: <strong>{timeRemaining}</strong></p>
+  )}
 
-  if (!token) {
-    alert("❌ Could not get push token. Nothing was cancelled.");
-    return;
-  }
+  <button
+    className="cancel-button small"
+    onClick={async () => {
+      const token = await requestPermissionAndGetToken();
 
-  try {
-    // 1) Ask backend to cancel ALL scheduled reminders for this token
-    const res = await fetch("/api/cancelReminders", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token }),
-    });
+      if (!token) {
+        alert("❌ Could not get push token. Nothing was cancelled.");
+        return;
+      }
 
-    if (!res.ok) {
-      const txt = await res.text().catch(() => "");
-      console.error("Cancel-all HTTP error:", res.status, txt);
-      alert("❌ Server error while cancelling reminders");
-      return;
-    }
+      try {
+        const res = await fetch("/api/cancelReminders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token }),
+        });
 
-    // 2) Clear local state and storage so UI updates immediately
-    localStorage.removeItem("activeReminder");
-    localStorage.removeItem("doseSchedule");
-    localStorage.removeItem("takenTimestamps");
-    localStorage.removeItem("medsTaken");
+        if (!res.ok) {
+          const txt = await res.text().catch(() => "");
+          console.error("Cancel-all HTTP error:", res.status, txt);
+          alert("❌ Server error while cancelling reminders");
+          return;
+        }
 
-    setShowReminderForm(false);
-    setReminderDrug("");
-    setIsLongTerm(false);
-    setDurationDays(7);
-    setTimesPerDay(1);
-    setDailyTimes([""]);
-    setMedsTaken(0);
-    setTakenTimestamps([]);
-    setIsCourseComplete(false);
-    setNextDoseTime(null);
-    setTimeRemaining("");
+        localStorage.removeItem("activeReminder");
+        localStorage.removeItem("doseSchedule");
+        localStorage.removeItem("takenTimestamps");
+        localStorage.removeItem("medsTaken");
 
-    alert("🗑️ All reminders cancelled");
-  } catch (err) {
-    console.error("❌ Error cancelling reminders:", err);
-    alert("❌ Failed to cancel reminders");
-  }
-}}
->
+        setShowReminderForm(false);
+        setReminderDrug("");
+        setIsLongTerm(false);
+        setDurationDays(7);
+        setTimesPerDay(1);
+        setDailyTimes([""]);
+        setMedsTaken(0);
+        setTakenTimestamps([]);
+        setIsCourseComplete(false);
+        setNextDoseTime(null);
+        setTimeRemaining("");
+
+        alert("🗑️ All reminders cancelled");
+      } catch (err) {
+        console.error("❌ Error cancelling reminders:", err);
+        alert("❌ Failed to cancel reminders");
+      }
+    }}
+  >
     🗑️ Cancel Reminders
   </button>
-                        </div>
+</div>
+
                     )}
                 </div>
 
