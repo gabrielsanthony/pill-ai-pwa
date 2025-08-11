@@ -286,29 +286,47 @@ useEffect(() => {
   return () => clearInterval(id);
 }, [nextDoseTime]);
 
-// [PILL-AI] If the current nextDoseTime is past, jump to the next scheduled dose
+// [PILL-AI] When a dose just became overdue, schedule the overdue push immediately
 useEffect(() => {
   if (!nextDoseTime) return;
-  const doseTime = (nextDoseTime instanceof Date ? nextDoseTime : new Date(nextDoseTime)).getTime();
-  if (doseTime > Date.now()) return;
 
-  const schedule = JSON.parse(localStorage.getItem('doseSchedule') || '[]');
-  const next = schedule
-    .map(ts => new Date(ts))
-    .filter(d => d.getTime() > Date.now())
-    .sort((a, b) => a - b)[0];
+  const t = (nextDoseTime instanceof Date ? nextDoseTime : new Date(nextDoseTime)).getTime();
+  const now = Date.now();
 
-  if (next) {
-    setNextDoseTime(next);
-    localStorage.setItem('nextDoseTime', next.toISOString());
-  } else {
-    setNextDoseTime(null);
-    localStorage.removeItem('nextDoseTime');
+  // If we just crossed into overdue (within last 2 minutes), run the check now.
+  if (t <= now && (now - t) < 2 * 60 * 1000) {
+    checkAndHandleOverdueDoses(); // deduped by overdueMap, safe to call
   }
 }, [timeRemaining, nextDoseTime]);
 
+// [PILL-AI] If the current nextDoseTime is past, jump to the next scheduled dose
+useEffect(() => {
+  if (!nextDoseTime) return;
 
+  const t = (nextDoseTime instanceof Date ? nextDoseTime : new Date(nextDoseTime)).getTime();
+  const now = Date.now();
 
+  // If it's in the past but within the 30-min window, keep this dose active.
+  const withinGrace = t <= now && (now - t) <= 30 * 60 * 1000;
+  if (withinGrace) return;
+
+  // If it's older than the 30-min window, advance to the next future dose.
+  if (t <= now) {
+    const schedule = JSON.parse(localStorage.getItem('doseSchedule') || '[]');
+    const next = schedule
+      .map(ts => new Date(ts))
+      .filter(d => d.getTime() > now)
+      .sort((a, b) => a - b)[0];
+
+    if (next) {
+      setNextDoseTime(next);
+      localStorage.setItem('nextDoseTime', next.toISOString());
+    } else {
+      setNextDoseTime(null);
+      localStorage.removeItem('nextDoseTime');
+    }
+  }
+}, [nextDoseTime, timeRemaining]);
 
     // 🧠 Restore reminder info from localStorage on load
     useEffect(() => {
