@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { getXP, calculateLevel, subscribe } from './utils/xp.js';
 import { recordEvent } from './gamification/actions.js';
 
@@ -6,79 +6,88 @@ function LearnCard({ hasReminder, reminderDrug, setActiveTab }) {
         const [quiz, setQuiz] = useState(null);
         const [selected, setSelected] = useState(null);
         const [feedback, setFeedback] = useState('');
-        
+
         const [xp, setXp] = useState(() => getXP());
         const [level, setLevel] = useState(() => calculateLevel(getXP()));
         const [loading, setLoading] = useState(false); // NEW
+        const slowTimer = useRef(null); // ⏱️ local “still working…” timer
+
+
 
         // Load quiz on reminder change
 
         // Load quiz on reminder change (normalize correct answer + abort stale fetches)
         // Trigger load when reminder/medicine changes
         useEffect(() => {
-        if (!hasReminder || !reminderDrug) return;
-        const ac = new AbortController();
-        loadQuiz(ac.signal);
-        return () => ac.abort();
+                if (!hasReminder || !reminderDrug) return;
+                const ac = new AbortController();
+                loadQuiz(ac.signal);
+                return () => ac.abort();
         }, [hasReminder, reminderDrug]);
 
 
-        async function loadQuiz(signal) {
-        if (!hasReminder || !reminderDrug) return;
+async function loadQuiz(signal) {
+  if (!hasReminder || !reminderDrug) return;
 
-        try {
-        setLoading(true);
-        setQuiz(null);
-        setSelected(null);
-        setFeedback('');
+  try {
+    setLoading(true);
+    setQuiz(null);
+    setSelected(null);
+    setFeedback('');
 
-        // NEW: gentle watchdog for slow responses
-        const watchdog = setTimeout(() => {
-        setFeedback('⏳ Still working… this can take a few seconds.');
-        }, 3000);
+    // Clear any existing timer before starting a new one
+    if (slowTimer.current) {
+      clearTimeout(slowTimer.current);
+      slowTimer.current = null;
+    }
+    // Show a gentle hint if fetch takes >3s
+    slowTimer.current = setTimeout(() => {
+      setFeedback('⏳ Still working… this can take a few seconds.');
+    }, 3000);
 
-        const res = await fetch('/api/generateQuestion', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ medicine: reminderDrug }),
-        signal,
-        });
-        const data = await res.json();
+    const res = await fetch('/api/generateQuestion', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ medicine: reminderDrug }),
+      signal,
+    });
+    const data = await res.json();
 
-        // --- normalize to numeric correctIndex (0..3) ---
-        let correctIndex = null;
+    // --- normalize to numeric correctIndex (0..3) ---
+    let correctIndex = null;
 
-        if (typeof data.answer === 'string') {
-        const map = { A: 0, B: 1, C: 2, D: 3 };
-        correctIndex = map[data.answer.trim().toUpperCase()];
-        }
-        if (typeof data.answer === 'number') {
-        correctIndex = data.answer;
-        }
-        if (correctIndex == null && Array.isArray(data.choices) && data.answer) {
-        const strip = s => String(s).replace(/^[A-D]:\s*/i, '').trim();
-        const ans = strip(data.answer);
-        correctIndex = data.choices.findIndex(c => strip(c) === ans);
-        }
+    if (typeof data.answer === 'string') {
+      const map = { A: 0, B: 1, C: 2, D: 3 };
+      correctIndex = map[data.answer.trim().toUpperCase()];
+    } else if (typeof data.answer === 'number') {
+      correctIndex = data.answer;
+    }
+    if (correctIndex == null && Array.isArray(data.choices) && data.answer) {
+      const strip = s => String(s).replace(/^[A-D]:\s*/i, '').trim();
+      const ans = strip(data.answer);
+      correctIndex = data.choices.findIndex(c => strip(c) === ans);
+    }
 
-        if (data.question && Array.isArray(data.choices) && correctIndex != null) {
-        setQuiz({ ...data, correctIndex });
-        } else {
-        console.warn('⚠️ Incomplete quiz data:', data);
-        setFeedback('⚠️ Sorry, that question failed. Tap “Next Question” to try again.');
-        }
-        } catch (err) {
-        if (err.name !== 'AbortError') {
-        console.error('❌ Failed to load quiz:', err);
-        setFeedback('❌ Network error. Tap “Next Question” to try again.');
-        }
-
-        } finally {
-        // NEW: clear the slow-load watchdog
-        clearTimeout(watchdog);
-        setLoading(false);
-        }
-        }
+    if (data.question && Array.isArray(data.choices) && correctIndex != null) {
+      setQuiz({ ...data, correctIndex });
+    } else {
+      console.warn('⚠️ Incomplete quiz data:', data);
+      setFeedback('⚠️ Sorry, that question failed. Tap “Next Question” to try again.');
+    }
+  } catch (err) {
+    if (err.name !== 'AbortError') {
+      console.error('❌ Failed to load quiz:', err);
+      setFeedback('❌ Network error. Tap “Next Question” to try again.');
+    }
+  } finally {
+    // clear the slow timer no matter what
+    if (slowTimer.current) {
+      clearTimeout(slowTimer.current);
+      slowTimer.current = null;
+    }
+    setLoading(false);
+  }
+}
 
         useEffect(() => {
                 const unsub = subscribe((newXP) => {
@@ -87,6 +96,15 @@ function LearnCard({ hasReminder, reminderDrug, setActiveTab }) {
                 });
                 return unsub; // cleanup on unmount
         }, []);
+
+        useEffect(() => {
+                return () => {
+                if (slowTimer.current) {
+                clearTimeout(slowTimer.current);
+                slowTimer.current = null;
+                }
+                };
+                }, []);
 
         function handleChoice(selectedIndex) {
                 setSelected(selectedIndex);
@@ -153,38 +171,38 @@ function LearnCard({ hasReminder, reminderDrug, setActiveTab }) {
 
                                         </ul>
                                         {feedback && <p><strong>{feedback}</strong></p>}
-                                      {selected !== null && (
-                                        <button
-                                        className="send-button"
-                                        onClick={() => {
-                                        const ac = new AbortController();
-                                        loadQuiz(ac.signal);
-                                        }}
-                                        disabled={loading}
-                                        >
-                                        {loading ? '⏳ Loading…' : '🔄 Next Question'}
-                                        </button>
+                                        {selected !== null && (
+                                                <button
+                                                        className="send-button"
+                                                        onClick={() => {
+                                                                const ac = new AbortController();
+                                                                loadQuiz(ac.signal);
+                                                        }}
+                                                        disabled={loading}
+                                                >
+                                                        {loading ? '⏳ Loading…' : '🔄 Next Question'}
+                                                </button>
                                         )}
-                                      
+
                                 </>
-                ) : (
-                <div style={{ opacity: 0.95 }}>
-                <p style={{ marginBottom: '0.75rem' }}>
-                {loading ? '⏳ Generating a new question…' : 'Preparing your next question…'}
-                </p>
-                {!loading && (
-                <button
-                        className="send-button"
-                        onClick={() => {
-                        const ac = new AbortController();
-                        loadQuiz(ac.signal);
-                        }}
-                >
-                        🔁 Retry
-                </button>
-                )}
-                </div>
-                )
+                        ) : (
+                                <div style={{ opacity: 0.95 }}>
+                                        <p style={{ marginBottom: '0.75rem' }}>
+                                                {loading ? '⏳ Generating a new question…' : 'Preparing your next question…'}
+                                        </p>
+                                        {!loading && (
+                                                <button
+                                                        className="send-button"
+                                                        onClick={() => {
+                                                                const ac = new AbortController();
+                                                                loadQuiz(ac.signal);
+                                                        }}
+                                                >
+                                                        🔁 Retry
+                                                </button>
+                                        )}
+                                </div>
+                        )
                         }
                 </div>
         );
