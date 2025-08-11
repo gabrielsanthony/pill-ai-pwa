@@ -2,8 +2,13 @@
 import { getToken } from 'firebase/messaging';
 import { messaging } from './firebase-config'; // ✅ use the instance you already export
 
-const VAPID_KEY =
-  'BB12zXeJSqQ73BnhGfMBQWsc5ww-1p_Ftaf8zcYeoKWXrbD9e2h2nzibSlOuqWNkJDeK3nrCHlkYJOQ5CufuVys';
+const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY;
+
+// 🔎 ADD THESE TWO LINES (right after VAPID_KEY):
+console.log('[FCM][DEBUG] VAPID exists?', Boolean(VAPID_KEY));
+console.log('[FCM][DEBUG] VAPID preview:', VAPID_KEY ? (VAPID_KEY.slice(0, 6) + '…  len=' + VAPID_KEY.length) : 'MISSING');
+
+// …rest of your file unchanged…
 
 export const requestPermissionAndGetToken = async () => {
   try {

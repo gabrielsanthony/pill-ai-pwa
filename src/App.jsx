@@ -70,6 +70,12 @@ function App() {
         (isLongTerm || (durationDays && durationDays > 0)) &&
         timesPerDay > 0;
 
+        function extractMedicineName(answer) {
+        if (!answer) return '';
+        const match = answer.match(/\b([A-Z][a-z]+(?:\s[A-Z][a-z]+)?)\b/);
+        return match ? match[0] : '';
+        }
+
     // ✅ Only allow Meds Taken button if within 30 min of next dose
     function isDoseWindowOpen() {
         if (!nextDoseTime) return false;
