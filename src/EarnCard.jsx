@@ -3,11 +3,14 @@ import { getXP, calculateLevel, subscribe } from './utils/xp.js';
 import { AVATARS } from './gamification/schema.js';
 import { getSelectedAvatarId, selectAvatar } from './gamification/avatars.js';
 import MyPerksDemo from './components/MyPerksDemo'; // ✅ ensure this path matches where you saved it
+import PerksStoreDemo from './components/PerksStoreDemo';
 
 export default function EarnCard() {
   const [xp, setXp] = useState(() => getXP());
   const [level, setLevel] = useState(() => calculateLevel(getXP()));
   const [selectedId, setSelectedId] = useState(() => getSelectedAvatarId());
+  const [openStore, setOpenStore] = useState(false); // ✅ NEW
+
 
   useEffect(() => {
     const unsub = subscribe((newXP) => {
@@ -25,7 +28,7 @@ export default function EarnCard() {
 
   return (
     <div className="card earn-card">
-      <h3>🏆 Earn & Avatars</h3>
+      <h3>🏆 Earn</h3>
       <p>
         <strong>🎖 Level:</strong> {level} &nbsp;|&nbsp; <strong>XP:</strong> {xp}
       </p>
@@ -56,8 +59,15 @@ export default function EarnCard() {
           );
         })}
       </div>
+      {/* ✅ Open the demo store */}
+      <div style={{ marginTop: 12 }}>
+        <button onClick={() => setOpenStore(true)}>🏪 Open Health Perks Store (Demo)</button>
+      </div>
 
-      {/* ✅ Step 2: read‑only status panel */}
+      {/* ✅ Read-only overlay */}
+      <PerksStoreDemo open={openStore} onClose={() => setOpenStore(false)} />
+
+      {/* ✅ Step 2 panel */}
       <MyPerksDemo />
     </div>
   );
