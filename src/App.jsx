@@ -3,22 +3,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import logo from './assets/pill-ai-logo.png'; // ✅ Updated image import
 import { requestPermissionAndGetToken } from './firebase-notifications';
-import { onMessage, getMessaging } from 'firebase/messaging'; // already there
-import Fuse from 'fuse.js';
-import { medicineNames } from './medicineList';
 import { useSwipeable } from 'react-swipeable';
 import LearnCard from './LearnCard';
 import { NUDGE_MS, buildNudgeTitle, buildNudgeBody } from './notifications/nudgeCopy';
 import { scheduleReminder, cancelReminder } from './notifications/api';
-
-const getNudgeMap = () => {
-  try {
-    return JSON.parse(localStorage.getItem('nudgeMap') || '{}');
-  } catch {
-    return {};
-  }
-};
-const setNudgeMap = (m) => localStorage.setItem('nudgeMap', JSON.stringify(m));
 
 // 🚨 Overdue bookkeeping
 const getOverdueMap = () => {
@@ -32,6 +20,8 @@ const getDoseSchedule = () => {
   catch { return []; }
 };
 const getTakenSet = () => new Set(JSON.parse(localStorage.getItem('takenTimestamps') || '[]'));
+
+let overdueCheckInFlight = false;
 
 // 💊 TrackCard Component
 
@@ -184,7 +174,7 @@ async function checkAndHandleOverdueDoses() {
         title: `Still overdue: ${reminderDrug || 'dose'}`,
         body: `If you’ve taken it, mark it in Pill‑AI. If not, please take it now (if safe).`,
         sendAt: follow,
-        tag: `overdue-nudge:${mainISO}:n2`,
+        tag: `dose:${mainISO}:n2`,
       });
 
       // Mark this dose as alerted so we don't duplicate
@@ -415,23 +405,6 @@ useEffect(() => {
             }
         };
         setupNotifications();
-    }, []);
-
-    // 📬 Foreground messages from Firebase (tab visible + focused)
-    useEffect(() => {
-    try {
-        const messaging = getMessaging();
-        const unsub = onMessage(messaging, (payload) => {
-        const title = payload?.notification?.title || payload?.data?.title || 'Reminder';
-        const body  = payload?.notification?.body  || payload?.data?.body  || '';
-        if (document.visibilityState === 'visible') {
-            showToast(title, body);
-        }
-        });
-        return () => unsub && unsub();
-    } catch (e) {
-        console.warn('[PILL-AI] onMessage unavailable:', e);
-    }
     }, []);
 
         // 📡 Messages forwarded from the Service Worker (push → postMessage)
@@ -857,8 +830,6 @@ const nextDoseMs = nextDoseTime
 
                                 const remindersToSchedule = [];
                                 const mainReminders = [];
-                                const mapUpdates = {}; // ✅ NEW: build doseISO -> nudgeISO map
-
                                 try {
                                     for (let dayOffset = 0; dayOffset < daysToSchedule; dayOffset++) {
                                         for (const time of dailyTimes) {
@@ -872,32 +843,15 @@ const nextDoseMs = nextDoseTime
   const mainISO = scheduled.toISOString(); // 👈 capture main ISO once
 
   // MAIN reminder
-  const main = {
-    token,
-    title: `🕒 Pill Reminder: ${reminderDrug}`,
-    body: `Take ${reminderDrug} at ${time}`,
-    sendAt: mainISO,
-    tag: `dose:${mainISO}:t0`
-  };
-  remindersToSchedule.push(main);
-  mainReminders.push(main);
-
-  // NUDGE (dose + NUDGE_MS)
-  const nudgeDate = new Date(scheduled.getTime() + NUDGE_MS);
-  if (nudgeDate > now) {
-    const nudgeISO = nudgeDate.toISOString(); // 👈 capture nudge ISO
-    const nudge = {
-      token,
-      title: buildNudgeTitle(reminderDrug),
-      body: buildNudgeBody(reminderDrug),
-      sendAt: nudgeISO,
-      tag: `dose:${mainISO}:n2`
-    };
-    remindersToSchedule.push(nudge);
-
-    // 👇 record the mapping main -> nudge
-    mapUpdates[mainISO] = nudgeISO;
-  }
+const main = {
+  token,
+  title: `🕒 Pill Reminder: ${reminderDrug}`,
+  body: `Take ${reminderDrug} at ${time}`,
+  sendAt: mainISO,
+  tag: `dose:${mainISO}:t0`
+};
+remindersToSchedule.push(main);
+mainReminders.push(main);
 }
     }
   }                                      
@@ -931,10 +885,6 @@ try {
 
 
   console.log("🧠 Stored dose timestamps (main only):", doseTimestamps);
-
- // ✅ Save the main->nudge mapping to state (your useEffect will sync it to localStorage)
-const existingMap = getNudgeMap();
-setNudgeMap({ ...existingMap, ...mapUpdates });
 
   alert(`✅ ${remindersToSchedule.length} reminders scheduled for ${reminderDrug}`);
   setShowReminderForm(false);
