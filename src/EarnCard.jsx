@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { getXP, calculateLevel, subscribe } from './utils/xp.js';
 import { AVATARS } from './gamification/schema.js';
 import { getSelectedAvatarId, selectAvatar } from './gamification/avatars.js';
+import MyPerksDemo from './components/MyPerksDemo'; // ✅ ensure this path matches where you saved it
 
 export default function EarnCard() {
   const [xp, setXp] = useState(() => getXP());
@@ -31,24 +32,22 @@ export default function EarnCard() {
       <progress value={xp % 100} max="100" />
 
       <div className="avatar-grid">
-
         {AVATARS.map(av => {
           const locked = xp < av.xpCost;
           const isSelected = selectedId === av.id;
           return (
             <button
-            key={av.id}
-            onClick={() => handleSelect(av.id, av.xpCost)}
-            disabled={locked}
-            className={[
-              'avatar-tile',
-              locked ? 'locked' : '',
-              isSelected ? 'selected' : ''
-            ].join(' ').trim()}
-            title={locked ? `Locked · requires ${av.xpCost} XP` : `Select ${av.name}`}
-          >
+              key={av.id}
+              onClick={() => handleSelect(av.id, av.xpCost)}
+              disabled={locked}
+              className={[
+                'avatar-tile',
+                locked ? 'locked' : '',
+                isSelected ? 'selected' : ''
+              ].join(' ').trim()}
+              title={locked ? `Locked · requires ${av.xpCost} XP` : `Select ${av.name}`}
+            >
               <img src={av.img} alt={av.name} className="avatar-img" />
-
               <div className="avatar-name">{av.name}</div>
               <div className="avatar-sub">
                 {locked ? `🔒 ${av.xpCost} XP` : (isSelected ? '✅ Selected' : 'Unlockable')}
@@ -57,6 +56,9 @@ export default function EarnCard() {
           );
         })}
       </div>
+
+      {/* ✅ Step 2: read‑only status panel */}
+      <MyPerksDemo />
     </div>
   );
 }

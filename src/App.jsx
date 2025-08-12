@@ -188,27 +188,14 @@ async function checkAndHandleOverdueDoses() {
           token, title, body, sendAt, tag: `dose:${mainISO}:od1`,
       });
 
-      // Optional: follow‑up nudge at 30 min (or NUDGE_MS if smaller)
-      const followDelay = Math.min(30 * 60 * 1000, NUDGE_MS);
-      const follow = new Date(Date.now() + followDelay).toISOString();
-      await scheduleReminder({
-        token,
-        title: `Still overdue: ${reminderDrug || 'dose'}`,
-        body: `If you’ve taken it, mark it in Pill‑AI. If not, please take it now (if safe).`,
-        sendAt: follow,
-        tag: `dose:${mainISO}:n2`,
-      });
-
       // Mark this dose as alerted so we don't duplicate
       overdueMap[mainISO] = true;
     } catch (err) {
       console.error('❌ Failed to schedule overdue notification for', mainISO, err);
     }
   }
-
   setOverdueMap(overdueMap);
 }
-
 
     function handleVoiceQuery(transcript) {
         console.log("🤖 Handling voice input:", transcript);

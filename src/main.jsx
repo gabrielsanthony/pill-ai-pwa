@@ -3,12 +3,25 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
 
-// Register Firebase Messaging Service Worker
+// --- Service Worker Registration (single, versioned) ---
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker
-    .register('/firebase-messaging-sw.js')
+    .register('/firebase-messaging-sw.js?v=2.0.0', { scope: '/' })
     .then((registration) => {
-      console.log('✅ Service Worker registered:', registration);
+      console.log('✅ Service Worker registered with scope:', registration.scope);
+
+      // If there's a waiting SW, tell it to activate immediately
+      if (registration.waiting) {
+        registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+      }
+
+      // Optional: listen for updates
+      registration.addEventListener('updatefound', () => {
+        const sw = registration.installing;
+        sw?.addEventListener('statechange', () => {
+          console.log('SW state changed to:', sw.state);
+        });
+      });
     })
     .catch((error) => {
       console.error('❌ Service Worker registration failed:', error);
@@ -20,16 +33,3 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <App />
   </React.StrictMode>
 );
-
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker
-      .register('/firebase-messaging-sw.js')
-      .then((registration) => {
-        console.log('✅ Service Worker registered:', registration);
-      })
-      .catch((error) => {
-        console.error('❌ Service Worker registration failed:', error);
-      });
-  });
-}
