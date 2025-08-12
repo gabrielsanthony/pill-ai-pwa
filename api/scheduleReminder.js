@@ -42,35 +42,43 @@ export default async function handler(req, res) {
         return res.status(400).json({ success: false, message: 'sendAt is in the past' });
       }
 
-      // 🚫 De-dupe on tag (unsent)
-      const existing = await db.collection('scheduledReminders')
-        .where('tag', '==', tag)
-        .where('sent', '==', false)
-        .limit(1)
-        .get();
+// ✅ Use `tag` as the document ID (idempotent key)
+const docRef = db.collection('scheduledReminders').doc(tag);
 
-      if (!existing.empty) {
-        return res.status(200).json({
-          success: true,
-          deduped: true,
-          message: 'Reminder already scheduled for this tag'
-        });
-      }
+await db.runTransaction(async (tx) => {
+  const snap = await tx.get(docRef);
 
-      // 📝 Save valid data to Firestore
-      const docRef = await db.collection('scheduledReminders').add({
-        token,
-        title,
-        body,
-        tag,                        // unique per message
-        kind: kind || null,         // 't0' | 'od1' | 'n2'
-        sendAt: Timestamp.fromDate(sendAtDate),
-        sendAtISO: sendAtDate.toISOString(), // optional but helpful
-        createdAt: new Date(),
-        sent: false,
-      });
+  // If this reminder was already sent, don't let a client overwrite it
+  if (snap.exists && snap.data().sent === true) {
+    throw new Error('This reminder has already been sent; refusing to overwrite.');
+  }
 
-      return res.status(200).json({ success: true, id: docRef.id });
+  // Build the payload; preserve original createdAt/sent if the doc exists
+  const base = snap.exists ? snap.data() : {};
+  const createdAt = snap.exists ? (base.createdAt || new Date()) : new Date();
+
+  tx.set(
+    docRef,
+    {
+      token,
+      title,
+      body,
+      tag,                         // stable unique key
+      kind: kind || null,          // 't0' | 'od1' | 'n2'
+      sendAt: Timestamp.fromDate(sendAtDate),
+      sendAtISO: sendAtDate.toISOString(),
+      createdAt,
+      updatedAt: new Date(),
+      sent: snap.exists ? (base.sent || false) : false,
+      sending: snap.exists ? (base.sending || false) : false, // default so your cron filter works
+    },
+    { merge: true }
+  );
+});
+
+return res.status(200).json({ success: true, id: tag });
+
+
     } catch (error) {
       console.error('🔥 Reminder save error:', error);
       return res.status(500).json({
