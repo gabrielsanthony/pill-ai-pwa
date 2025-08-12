@@ -1,20 +1,15 @@
-/* public/firebase-messaging-sw.js */
-importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js');
+// public/firebase-messaging-sw.js
+// Minimal SW that handles data-only WebPush (no firebase.messaging needed)
 
-// Bump this when you change SW so browsers update it
-const PILL_AI_SW_VERSION = '2.0.0';
+// Bump to force browsers to update the SW when deployed
+const PILL_AI_SW_VERSION = '3.0.0';
 
-firebase.initializeApp({
-  apiKey: "AIzaSyD4IIK7DRJLGE5bKNe5J0W2ufbyUWsA4oc",
-  authDomain: "pill-ai-935d5.firebaseapp.com",
-  projectId: "pill-ai-935d5",
-  storageBucket: "pill-ai-935d5.appspot.com",
-  messagingSenderId: "861184373325",
-  appId: "1:861184373325:web:c0589d6a64e1c1fa046204"
+// Let pages tell this SW to activate immediately after update
+self.addEventListener('message', (event) => {
+  if (event?.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
-
-const messaging = firebase.messaging();
 
 /* --- Short, encouraging one-liners --- */
 const POSITIVE_LINES = [
@@ -29,67 +24,62 @@ const POSITIVE_LINES = [
   "Keep the streak going! 🔥",
   "You’re worth the effort. 🌟",
   "Small step, huge impact. 🚀",
-   "Your health, your win. 🏆"
+  "Your health, your win. 🏆",
 ];
 const pickLine = () => POSITIVE_LINES[Math.floor(Math.random() * POSITIVE_LINES.length)];
 
-messaging.onBackgroundMessage(async function(payload) {
-  console.log('[Pill‑AI SW] Background message received:', payload);
+// Handle ALL pushes (works for data-only messages sent by Admin SDK)
+self.addEventListener('push', (event) => {
+  event.waitUntil((async () => {
+    let payload = {};
+    try {
+      payload = event.data ? event.data.json() : {};
+    } catch (_) {}
 
-  // 1) Extract fields from either notification or data payloads
-  const title = payload.notification?.title || payload.data?.title || 'Pill-AI Reminder';
-  const baseBody = payload.notification?.body || payload.data?.body || 'You have a medication to take!';
-  const encouragement = payload.data?.encouragement || pickLine();
-  const body = `${baseBody} ${encouragement}`.trim();
+    // Our function puts everything under message.data
+    const data = payload.data || payload; // support both shapes just in case
 
-  // Keep tags unique per dose so notifications don’t replace each other
-  const tag = payload.data?.tag || `pillai:${Date.now()}`;
-  const data = payload.data || {};
+    const title = data.title || 'Pill‑AI Reminder';
+    const baseBody = data.body || "It's time for your medication.";
+    const encouragement = data.encouragement || pickLine();
+    const body = `${baseBody} ${encouragement}`.trim();
 
-  try {
-    // 2) Tell all open pages (visible or hidden) so visible tabs can show the toast
+    const tag  = data.tag  || `pillai:${Date.now()}`;
+    const kind = data.kind || ''; // t0 | od1 | n2
+
+    // If any tab is visible, forward to page and don't show OS banner
     const clientsList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    clientsList.forEach(c => {
-      try {
-        c.postMessage({ type: 'REMINDER', payload: { title, body, tag, data } });
-      } catch (e) {}
-    });
+    const visibleClient = clientsList.find(c => c.visibilityState === 'visible');
 
-    // 3) Only show OS banner if NO tab is visible
-    const anyVisible = clientsList.some(c => c.visibilityState === 'visible');
-
-    if (!anyVisible) {
-      await self.registration.showNotification(title, {
-        body,
-        icon: '/icon-192x192.png',
-        tag,
-        data,
-        requireInteraction: false
-      });
-      console.log('[Pill‑AI SW] No visible tab → showed OS banner.');
-    } else {
-      console.log('[Pill‑AI SW] A tab is visible → suppress OS banner; page will show toast.');
+    if (visibleClient) {
+      visibleClient.postMessage({ type: 'REMINDER', payload: { title, body, tag, kind } });
+      return; // toast will be shown by the page
     }
-  } catch (err) {
-    console.warn('[Pill‑AI SW] Error handling background message:', err);
-    // Fallback: at least show a banner
+
+    // Otherwise, show system notification
     await self.registration.showNotification(title, {
       body,
-      icon: '/icon-192x192.png',
       tag,
-      data
+      data: { tag, kind },
+      icon: '/icon-192x192.png',           // keep or remove if not present
+      // badge: '/badge-72x72.png',
+      requireInteraction: false
     });
-  }
+  })());
 });
 
-// Focus the app when the user clicks the banner
+// Focus/open the app when the user clicks a banner
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   event.waitUntil((async () => {
-    const allClients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    if (allClients.length) {
-      return allClients[0].focus();
+    const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const c of all) {
+      if ('focus' in c) {
+        await c.focus();
+        c.postMessage({ type: 'REMINDER_CLICK', tag: (event.notification.data||{}).tag });
+        return;
+      }
     }
-    return self.clients.openWindow(self.location.origin);
+    await self.clients.openWindow('/');
   })());
 });

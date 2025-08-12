@@ -7,6 +7,8 @@ import { useSwipeable } from 'react-swipeable';
 import LearnCard from './LearnCard';
 import { NUDGE_MS, buildNudgeTitle, buildNudgeBody } from './notifications/nudgeCopy';
 import { scheduleReminder, cancelReminder } from './notifications/api';
+import { getMessaging, onMessage } from 'firebase/messaging';
+
 
 // 🚨 Overdue bookkeeping
 const getOverdueMap = () => {
@@ -60,6 +62,26 @@ function App() {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     toastTimerRef.current = setTimeout(() => setToastVisible(false), TOAST_HIDE_MS);
     }
+
+    // Foreground FCM → show in-app toast
+useEffect(() => {
+  let unsub;
+  try {
+    const messaging = getMessaging();
+    unsub = onMessage(messaging, (payload) => {
+      // Prefer data payload; fall back to notification
+      const title = payload?.data?.title || payload?.notification?.title || 'Pill‑AI Reminder';
+      const body  = payload?.data?.body  || payload?.notification?.body  || '';
+
+      if (document.visibilityState === 'visible') {
+        showToast(title, body);
+      }
+    });
+  } catch (e) {
+    console.warn('[PILL‑AI] onMessage unavailable:', e);
+  }
+  return () => unsub && unsub();
+}, []);
 
     const goToTab = (newTab) => {
     const oldIndex = tabOrder.indexOf(activeTab);
