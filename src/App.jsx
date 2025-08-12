@@ -173,7 +173,7 @@ async function checkAndHandleOverdueDoses() {
       const body  = `You missed your scheduled dose. Tap to mark taken or get back on track.`;
 
       await scheduleReminder({
-        token, title, body, sendAt, tag: `overdue:${mainISO}`,
+          token, title, body, sendAt, tag: `dose:${mainISO}:od1`,
       });
 
       // Optional: follow‑up nudge at 30 min (or NUDGE_MS if smaller)
@@ -184,7 +184,7 @@ async function checkAndHandleOverdueDoses() {
         title: `Still overdue: ${reminderDrug || 'dose'}`,
         body: `If you’ve taken it, mark it in Pill‑AI. If not, please take it now (if safe).`,
         sendAt: follow,
-        tag: `overdue-nudge:${mainISO}`,
+        tag: `overdue-nudge:${mainISO}:n2`,
       });
 
       // Mark this dose as alerted so we don't duplicate
@@ -877,7 +877,7 @@ const nextDoseMs = nextDoseTime
     title: `🕒 Pill Reminder: ${reminderDrug}`,
     body: `Take ${reminderDrug} at ${time}`,
     sendAt: mainISO,
-    tag: `dose:${mainISO}`
+    tag: `dose:${mainISO}:t0`
   };
   remindersToSchedule.push(main);
   mainReminders.push(main);
@@ -891,7 +891,7 @@ const nextDoseMs = nextDoseTime
       title: buildNudgeTitle(reminderDrug),
       body: buildNudgeBody(reminderDrug),
       sendAt: nudgeISO,
-      tag: `nudge:${mainISO}`
+      tag: `dose:${mainISO}:n2`
     };
     remindersToSchedule.push(nudge);
 
