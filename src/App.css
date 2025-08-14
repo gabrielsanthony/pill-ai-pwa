@@ -215,11 +215,19 @@ input[type="text"], select {
   line-height: 1.6;
   margin-bottom: 2rem;
 }
-.cancel-button,
-.mic-button {
+/* Cancel buttons stay full width on mobile */
+.cancel-button {
   width: 100%;
   font-size: 1.2rem;
   padding: 1.1rem;
+  margin-top: 1rem;
+}
+
+/* Mic buttons inside mic-row share the row */
+.mic-row .mic-button {
+  width: calc(50% - 6px); /* two buttons per row, with gap */
+  font-size: 1.1rem;
+  padding: 1rem;
   margin-top: 1rem;
 }
 
@@ -516,4 +524,28 @@ select {
 /* Generic disabled button look (just in case) */
 .earn-card button[disabled] {
   cursor: not-allowed;
+}
+
+/* 1) Layout: put the two voice buttons side‑by‑side */
+.mic-row {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap; /* lets them wrap on really narrow screens */
+}
+
+/* 2) Make both mic buttons equal width in the row */
+.mic-row .mic-button {
+  flex: 1 1 240px;  /* same visual size; grows/shrinks together */
+  margin-top: 0;    /* row controls spacing; keep these flush */
+}
+
+/* 3) Red variant for the Stop button */
+.mic-button.stop {
+  background-color: #e53935;                      /* red */
+  box-shadow: 0 4px 10px rgba(229, 57, 53, 0.25); /* match orange style */
+}
+.mic-button.stop:hover {
+  background-color: #c62828;                      /* darker on hover */
 }

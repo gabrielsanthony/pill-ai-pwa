@@ -1099,27 +1099,34 @@ try {
                 {activeTab === 'voice' && (
                 <div className="card voice-card">
                     <h3>🎙️ Voice Assistant</h3>
+
+                    <div className="mic-row">
                     <button
                         className="mic-button"
                         onClick={() => {
-                            if (window.recognition) {
-                                window.recognition.start();
-                            } else {
-                                alert("🎤 Voice recognition not supported in this browser.");
-                            }
+                        if (window.recognition) {
+                            window.recognition.start();
+                        } else {
+                            alert("🎤 Voice recognition not supported in this browser.");
+                        }
                         }}
+                        aria-label="Start listening"
                     >
                         🔊🎤 {isListening ? "Listening..." : "Tap to Ask"}
                     </button>
-                </div>
-                )}
 
-                {activeTab === 'learn' && (
-                <LearnCard
-                    hasReminder={hasReminder}
-                    reminderDrug={reminderDrug}
-                    setActiveTab={setActiveTab}
-                />
+                    <button
+                        className="mic-button stop"
+                        onClick={() => {
+                        try { window.recognition?.stop(); } catch {}
+                        try { window.speechSynthesis?.cancel(); } catch {}
+                        }}
+                        aria-label="Stop listening"
+                    >
+                        ⛔ Stop
+                    </button>
+                    </div>
+                </div>
                 )}
 
                 {activeTab === 'earn' && <EarnCard />}
