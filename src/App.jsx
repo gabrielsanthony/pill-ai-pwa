@@ -1145,6 +1145,17 @@ try {
                 </div>
                 )}
 
+                {activeTab === 'learn' && (
+                <div className="card learn-card">
+                    <LearnCard
+                    hasReminder={hasReminder}
+                    reminderDrug={reminderDrug}
+                    setActiveTab={setActiveTab}
+                    />
+                </div>
+                )}
+
+
                 {activeTab === 'earn' && <EarnCard />}
 
                 {activeTab === 'about' && (
