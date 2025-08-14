@@ -83,27 +83,43 @@ useEffect(() => {
   return () => unsub && unsub();
 }, []);
 
-    const goToTab = (newTab) => {
+const goToTab = (newTab, dir) => {
+  if (dir) {
+    // when caller knows swipe direction (left/right)
+    setSlideDir(dir);
+  } else {
+    // when clicking tab buttons (no wrap); pick best direction
     const oldIndex = tabOrder.indexOf(activeTab);
     const newIndex = tabOrder.indexOf(newTab);
-    setSlideDir(newIndex > oldIndex ? 'right' : 'left');
-    setActiveTab(newTab);
-    };
+    const len = tabOrder.length;
+    const forward  = (newIndex - oldIndex + len) % len;   // moving right
+    const backward = (oldIndex - newIndex + len) % len;   // moving left
+    setSlideDir(forward <= backward ? 'right' : 'left');
+  }
+  setActiveTab(newTab);
+};
+
 
     const tabOrder = ['ask', 'track', 'voice', 'learn', 'earn', 'about'];
+    // 👇 add these helpers right after tabOrder
+    const nextTabOf = (cur) => {
+    const i = tabOrder.indexOf(cur);
+    return tabOrder[(i + 1) % tabOrder.length];
+    };
+    const prevTabOf = (cur) => {
+    const i = tabOrder.indexOf(cur);
+    return tabOrder[(i - 1 + tabOrder.length) % tabOrder.length];
+    };
 
     const handlers = useSwipeable({
-    onSwipedLeft: () => {
-        const i = tabOrder.indexOf(activeTab);
-        if (i < tabOrder.length - 1) goToTab(tabOrder[i + 1]);
-    },
-    onSwipedRight: () => {
-        const i = tabOrder.indexOf(activeTab);
-        if (i > 0) goToTab(tabOrder[i - 1]);
-    },
+    // left swipe moves to the next tab (wraps); animate as sliding right
+    onSwipedLeft: () => goToTab(nextTabOf(activeTab), 'right'),
+    // right swipe moves to the previous tab (wraps); animate as sliding left
+    onSwipedRight: () => goToTab(prevTabOf(activeTab), 'left'),
     preventDefaultTouchmoveEvent: true,
     trackMouse: true,
     });
+
 
     const hasReminder =
         reminderDrug &&

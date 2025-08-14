@@ -393,8 +393,19 @@ select {
 }
 .swipe-wrapper {
   width: 100%;
+  /* let horizontal gestures be recognized while the page can still scroll vertically */
+  touch-action: pan-y;
+  /* smoother GPU compositing during slide-in animations */
+  will-change: transform, opacity;
 }
-/* Prevent content peeking during slide */
+/* allow text fields inside the swipe area to behave normally */
+.swipe-wrapper input,
+.swipe-wrapper textarea,
+.swipe-wrapper select,
+.swipe-wrapper button {
+  touch-action: auto;
+}
+
 .card-viewport {
   width: 100%;
   max-width: 640px;
@@ -402,6 +413,8 @@ select {
   overflow: hidden;
   position: relative;
   padding-inline: 12px;
+  /* ensure the frame doesn’t collapse between different cards */
+  min-height: 420px; /* tweak if your tallest card is taller/shorter */
 }
 
 /* we already have .swipe-wrapper { width: 100%; } – keep it */
@@ -549,3 +562,5 @@ select {
 .mic-button.stop:hover {
   background-color: #c62828;                      /* darker on hover */
 }
+.swipe-wrapper { cursor: grab; }
+.swipe-wrapper:active { cursor: grabbing; }
