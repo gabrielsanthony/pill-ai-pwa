@@ -66,11 +66,6 @@ export default function EarnCard() {
 
       {/* ✅ Read-only overlay */}
       <PerksStoreDemo open={openStore} onClose={() => setOpenStore(false)} />
-
-      {/* ✅ Step 2 panel */}
-      <div className="perks-section">
-        <MyPerksDemo />
-      </div>
     </div>
   );
 }
