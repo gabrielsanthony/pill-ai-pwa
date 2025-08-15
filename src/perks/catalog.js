@@ -18,14 +18,6 @@ export const PERKS_DEMO = [
     icon: '🏋️'
   },
   {
-    id: 'nurse-consult',
-    name: 'Free Nurse Consult',
-    partner: 'Virtual Doc',
-    xpCost: 450,
-    desc: 'One virtual nurse consult (demo).',
-    icon: '👩‍⚕️'
-  },
-  {
     id: 'voucher-25',
     name: '$25 Voucher',
     partner: 'PillSports Store',
@@ -36,7 +28,7 @@ export const PERKS_DEMO = [
   {
     id: 'hurricanes-ticket',
     name: 'Free Hurricanes Ticket',
-    partner: '—',
+    partner: 'PillSports Store',
     xpCost: 1200,
     desc: 'One general admission ticket (demo).',
     icon: '🏉'
