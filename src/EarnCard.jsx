@@ -68,7 +68,8 @@ export default function EarnCard() {
       <PerksStoreDemo open={openStore} onClose={() => setOpenStore(false)} />
 
       {/* ✅ Step 2 panel */}
-      <MyPerksDemo />
+      <div className="perks-section">
+        <MyPerksDemo />
     </div>
   );
 }
