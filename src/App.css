@@ -564,3 +564,39 @@ select {
 }
 .swipe-wrapper { cursor: grab; }
 .swipe-wrapper:active { cursor: grabbing; }
+
+/* Give the My Perks Demo inside EarnCard breathing space */
+.earn-card .perks-section {
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  border: 1px solid #e5e7eb;
+}
+
+/* Style the table/list inside */
+.earn-card .perks-section table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 8px; /* space between rows */
+}
+
+.earn-card .perks-section th {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.earn-card .perks-section td {
+  padding: 0.75rem;
+  background: #fafafa;
+  border-radius: 8px;
+}
+
+/* Make “Locked” buttons look consistent and aligned */
+.earn-card .perks-section td:last-child {
+  text-align: right;
+}
