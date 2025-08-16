@@ -19,14 +19,12 @@ export const requestPermissionAndGetToken = async () => {
       return null;
     }
 
-    // Ensure the FCM SW is registered and pass it to getToken (critical on desktop)
-    let registration =
-      (await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js')) ||
-      (await navigator.serviceWorker.register('/firebase-messaging-sw.js'));
+// ✅ Use the already ACTIVE Service Worker (registered in main.jsx)
+const registration =
+  (typeof window !== 'undefined' && window.__PILLAI_SW_REG__) ||
+  (await navigator.serviceWorker.ready);
 
-// Wait for it to be fully active (belt & suspenders)
-    await navigator.serviceWorker.ready;
-    console.log('[FCM] Service Worker registered @ scope:', registration.scope);
+console.log('✅ [FCM] Using active SW @ scope:', registration.scope);
 
     const token = await getToken(messaging, {
       vapidKey: VAPID_KEY,
