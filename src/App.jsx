@@ -53,6 +53,9 @@ function App() {
     const [toast, setToast] = useState(null);           // { title, body } or null
     const [toastVisible, setToastVisible] = useState(false);
     const toastTimerRef = useRef(null);
+    // Guards so we attach each foreground listener exactly once
+        const swListenerAttachedRef = useRef(false);
+        const onMessageUnsubRef = useRef(null);
 
     // Helper to show a toast for a few seconds
     const TOAST_HIDE_MS = 6000;
@@ -63,24 +66,34 @@ function App() {
     toastTimerRef.current = setTimeout(() => setToastVisible(false), TOAST_HIDE_MS);
     }
 
-    // Foreground FCM → show in-app toast
+// Foreground FCM (page path) → show in-app toast
 useEffect(() => {
-  let unsub;
+  if (onMessageUnsubRef.current) return; // already attached
   try {
     const messaging = getMessaging();
-    unsub = onMessage(messaging, (payload) => {
-      // Prefer data payload; fall back to notification
-      const title = payload?.data?.title || payload?.notification?.title || 'Pill‑AI Reminder';
+
+    const unsub = onMessage(messaging, (payload) => {
+      const title = payload?.data?.title || payload?.notification?.title || 'Pill-AI Reminder';
       const body  = payload?.data?.body  || payload?.notification?.body  || '';
 
+      console.log('[FG] onMessage payload:', payload);
       if (document.visibilityState === 'visible') {
+        console.log('[FG] Showing toast from onMessage');
         showToast(title, body);
+      } else {
+        console.log('[FG] Skipped toast (tab not visible)');
       }
     });
+
+    onMessageUnsubRef.current = unsub;
   } catch (e) {
-    console.warn('[PILL‑AI] onMessage unavailable:', e);
+    console.warn('[PILL-AI] onMessage unavailable:', e);
   }
-  return () => unsub && unsub();
+
+  return () => {
+    try { onMessageUnsubRef.current?.(); } catch {}
+    onMessageUnsubRef.current = null;
+  };
 }, []);
 
 const goToTab = (newTab, dir) => {
@@ -432,27 +445,43 @@ useEffect(() => {
         setupNotifications();
     }, []);
 
-        // 📡 Messages forwarded from the Service Worker (push → postMessage)
-    useEffect(() => {
-    const onSwMessage = (evt) => {
-        if (evt?.data?.type === 'REMINDER') {
-        const p = evt.data.payload || {};
-        const title = p.title || 'Reminder';
-        const body  = p.body  || '';
-        if (document.visibilityState === 'visible') {
-            showToast(title, body);
-        }
-        }
-    };
-    if (navigator.serviceWorker?.addEventListener) {
-        navigator.serviceWorker.addEventListener('message', onSwMessage);
+// 📡 SW → Page messages (push handled by SW and forwarded via postMessage)
+useEffect(() => {
+  if (swListenerAttachedRef.current) return; // already attached
+  const onSwMessage = (evt) => {
+    const msg = evt?.data;
+    if (!msg || !msg.type) return;
+
+    console.log('[FG] SW message:', msg);
+
+    if (msg.type === 'REMINDER') {
+      const p = msg.payload || {};
+      const title = p.title || 'Reminder';
+      const body  = p.body  || '';
+      if (document.visibilityState === 'visible') {
+        console.log('[FG] Showing toast from SW→page');
+        showToast(title, body);
+      } else {
+        console.log('[FG] Skipped toast (tab not visible)');
+      }
+    } else if (msg.type === 'REMINDER_CLICK') {
+      console.log('[FG] SW notification clicked; tag=', msg.tag);
+      // Optional: route user to Track tab etc.
     }
-    return () => {
-        if (navigator.serviceWorker?.removeEventListener) {
-        navigator.serviceWorker.removeEventListener('message', onSwMessage);
-        }
-    };
-    }, []);
+  };
+
+  try {
+    navigator.serviceWorker?.addEventListener('message', onSwMessage);
+    swListenerAttachedRef.current = true;
+  } catch (e) {
+    console.warn('[PILL-AI] Could not attach SW→page listener:', e);
+  }
+
+  return () => {
+    try { navigator.serviceWorker?.removeEventListener('message', onSwMessage); } catch {}
+    swListenerAttachedRef.current = false;
+  };
+}, []);
 
     useEffect(() => {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -655,6 +684,29 @@ const nextDoseMs = nextDoseTime
             </div>
         </div>
         )}
+
+{/* DEV: quick toast test (remove later) */}
+<button
+  type="button"
+  style={{
+    position: 'fixed',
+    right: 12,
+    bottom: 12,
+    padding: '8px 12px',
+    border: 'none',
+    borderRadius: 8,
+    cursor: 'pointer',
+    opacity: 0.6,
+    boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+    zIndex: 9999
+  }}
+  onClick={() => showToast('Test Toast', 'If you see this, foreground UI works.')}
+  aria-label="Show test toast"
+  title="Show test toast"
+>
+  ▶️ Test Toast
+</button>
+
 
                 <div className="tab-bar">
                      <button className={activeTab === 'ask' ? 'tab active' : 'tab'} onClick={() => goToTab('ask')}>💬 Chat</button>
