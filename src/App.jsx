@@ -582,12 +582,11 @@ useEffect(() => {
                     >
                         ✅ Meds Taken
                     </button>
-                    <button
-                        className="cancel-button"
-                        onClick={resetProgress}
-                    >
-                        🔁 Reset Progress (Testing Only)
-                    </button>
+                    {/* 🔒 Reset button removed for production
+<button className="danger" onClick={handleResetProgress}>
+  🔄 Reset Progress (Testing Only)
+</button>
+*/} 
                 </div>
             ) : (
                 <div>
@@ -1024,19 +1023,21 @@ try {
                                 ✅ Meds Taken
                             </button>
 
-                            <button
-                                className="cancel-button"
-                                onClick={() => {
-                                    if (window.confirm("Reset your progress?")) {
-                                        setMedsTaken(0);
-                                        setTakenTimestamps([]);
-                                        localStorage.setItem("medsTaken", 0);
-                                        localStorage.setItem("takenTimestamps", JSON.stringify([]));
-                                    }
-                                }}
-                            >
-                                🔁 Reset Progress (Testing Only)
-                            </button>
+                            {/* 🔒 Reset button removed for production
+<button
+    className="cancel-button"
+    onClick={() => {
+        if (window.confirm("Reset your progress?")) {
+            setMedsTaken(0);
+            setTakenTimestamps([]);
+            localStorage.setItem("medsTaken", 0);
+            localStorage.setItem("takenTimestamps", JSON.stringify([]));
+        }
+    }}
+>
+    🔁 Reset Progress (Testing Only)
+</button>
+*/}
                         </div>
                     ) : (
 <div>
