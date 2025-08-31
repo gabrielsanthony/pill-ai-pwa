@@ -465,10 +465,23 @@ useEffect(() => {
       } else {
         console.log('[FG] Skipped toast (tab not visible)');
       }
-    } else if (msg.type === 'REMINDER_CLICK') {
-      console.log('[FG] SW notification clicked; tag=', msg.tag);
-      // Optional: route user to Track tab etc.
-    }
+    
+} else if (msg.type === 'REMINDER_CLICK') {
+  console.log('[FG] SW notification clicked; tag=', msg.tag);
+
+  // Switch to Track tab (uses your tab animation logic)
+  goToTab('track');
+
+  // Scroll to the progress section after the tab renders
+  setTimeout(() => {
+    const el =
+      document.getElementById('progress-section') ||
+      document.querySelector('.progress-section');
+    el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 0);
+}
+
+
   };
 
   try {
@@ -986,7 +999,7 @@ try {
                 )}
 
                 {/* ✅ Progress Tracking UI */}
-                <div className="progress-section">
+                <div id="progress-section" className="progress-section">
                     <h3>📈 Track Your Medication</h3>
 
                     {!showReminderForm && (
