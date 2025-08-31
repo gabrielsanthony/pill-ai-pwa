@@ -4,61 +4,54 @@ import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 
 const firebaseConfig = {
   apiKey: "AIzaSyD4IIK7DRJLGE5bKNe5J0W2ufbyUWsA4oc",
-    authDomain: "pill-ai-935d5.firebaseapp.com",
-      projectId: "pill-ai-935d5",
-        storageBucket: "pill-ai-935d5.appspot.com",
-          messagingSenderId: "861184373325",
-            appId: "1:861184373325:web:c0589d6a64e1c1fa046204"
-            };
+  authDomain: "pill-ai-935d5.firebaseapp.com",
+  projectId: "pill-ai-935d5",
+  storageBucket: "pill-ai-935d5.appspot.com",
+  messagingSenderId: "861184373325",
+  appId: "1:861184373325:web:c0589d6a64e1c1fa046204"
+};
 
-            const app = initializeApp(firebaseConfig);
-            const messaging = getMessaging(app);
+// ✅ Use ONE public VAPID key (copy the value from Firebase Console → Web Push certificates)
+const VAPID_PUBLIC_KEY = 'BB12zXeJSqQ73BnhGfMBQWsc5ww-1p_Ftaf8zcYeoKWXrbD9e2h2nzibSlOuqWNkJDeK3nrCHlkYJOQ5CufuVys';
 
-            export const requestNotificationPermission = async () => {
-              try {
-                  const permission = await Notification.requestPermission();
-                      if (permission === 'granted') {
-                            const token = await getToken(messaging, {
-                                    vapidKey: 'BMezexq4S4zz4jkejASOtjwWwMDN6jHeLCi2iUdBEAeTcV70XHvNkDLCd84cSfB1Tu-FgMXqVtik5Xb7uUILciA',
-                                    serviceWorkerRegistration: await navigator.serviceWorker.register('/firebase-messaging-sw.js'),
-                                          });
-                                                console.log('✅ Push token:', token);
-                                                      return token;
-                                                          } else {
-                                                                console.warn('❌ Notification permission denied');
-                                                                      return null;
-                                                                          }
-                                                                            } catch (err) {
-                                                                                console.error('❌ Error while retrieving token:', err);
-                                                                                    return null;
-                                                                                      }
-                                                                                      };
+const app = initializeApp(firebaseConfig);
+const messaging = getMessaging(app);
 
-                                                                                     onMessage(messaging, (payload) => {
-                                                                                      console.log('📩 Foreground message received:', payload);
+// Request permission + return the device token
+export const requestNotificationPermission = async () => {
+  try {
+    if (Notification.permission !== 'granted') {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        console.warn('❌ Notification permission denied');
+        return null;
+      }
+    }
 
-                                                                                      if (Notification.permission === 'granted') {
-                                                                                        const { notification } = payload;
+    // ❗️No second SW registration here — sw.js already imports your messaging SW
+    const token = await getToken(messaging, { vapidKey: VAPID_PUBLIC_KEY });
+    console.log('[FCM] Web device token:', token);
+    return token;
+  } catch (err) {
+    console.error('❌ Error while retrieving token:', err);
+    return null;
+  }
+};
 
-                                                                                        if (notification?.title && notification?.body) {
-                                                                                          console.log('🧠 Attempting to display foreground notification');
-                                                                                          try {
-                                                                                            const notif = new Notification(notification.title, {
-                                                                                              body: notification.body,
-                                                                                              requireInteraction: true,
-                                                                                            });
+// Foreground messages (optional toast)
+onMessage(messaging, (payload) => {
+  console.log('📩 Foreground message received:', payload);
 
-                                                                                            notif.onclick = () => {
-                                                                                              console.log('👆 Notification clicked!');
-                                                                                              window.focus();
-                                                                                            };
-                                                                                          } catch (error) {
-                                                                                            console.error('❌ Failed to show Notification:', error);
-                                                                                          }
-                                                                                        } else {
-                                                                                          console.warn('❗ Missing title/body in payload:', payload);
-                                                                                        }
-                                                                                      } else {
-                                                                                        console.warn('❌ Notification permission not granted at display time.');
-                                                                                      }
-                                                                                    });
+  const title = payload?.notification?.title || payload?.data?.title || 'Pill-AI Reminder';
+  const body  = payload?.notification?.body  || payload?.data?.body  || "It's time for your medication.";
+
+  // Show a simple foreground notification (safe fallback)
+  if (Notification.permission === 'granted') {
+    try {
+      const n = new Notification(title, { body, requireInteraction: false });
+      n.onclick = () => window.focus();
+    } catch (e) {
+      console.warn('Notification display failed:', e);
+    }
+  }
+});
