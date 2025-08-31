@@ -4,7 +4,7 @@ import './App.css';
 import logo from './assets/pill-ai-logo.png'; // ✅ Updated image import
 import { requestPermissionAndGetToken } from './firebase-notifications';
 import { useSwipeable } from 'react-swipeable';
-import { LearnCard } from './LearnCard';
+import { LearnCard } from './LearnCard.jsx';
 import { NUDGE_MS, buildNudgeTitle, buildNudgeBody } from './notifications/nudgeCopy';
 import { scheduleReminder, cancelReminder } from './notifications/api';
 import { getMessaging, onMessage } from 'firebase/messaging';
