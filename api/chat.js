@@ -27,9 +27,9 @@ export default async function handler(req, res) {
 
   // 2) Build messages
   const system = `You are a helpful New Zealand medicine assistant.
-Always be clear and concise, and prefer NZ consumer information sources (e.g., Medsafe CMI).
-Answer in ${language}.
-If safety-critical, remind the user to consult a pharmacist or doctor.`;
+                                            Always be clear and concise, and prefer NZ consumer information sources (e.g., Medsafe CMI).
+                                            Answer in ${language}.
+                                            If safety-critical, remind the user to consult a pharmacist or doctor.`;
 
   // 3) Timeout guard
   const controller = new AbortController();
@@ -59,7 +59,7 @@ If safety-critical, remind the user to consult a pharmacist or doctor.`;
     // 4) Non-OK → pass useful info
     if (!openaiRes.ok) {
       let errText = '';
-      try { errText = await openaiRes.text(); } catch {}
+      try { errText = await openaiRes.text(); } catch { }
       console.error('[chat] OpenAI HTTP', openaiRes.status, errText);
       const friendly = openaiRes.status === 401
         ? 'Invalid API key'

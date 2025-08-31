@@ -13,6 +13,11 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // 👇 make Workbox generate sw.js and load our shim
+      strategies: 'generateSW',
+      workbox: {
+        importScripts: ['sw-extra.js'], // loads /public/sw-extra.js at runtime
+      },
       manifest: {
         name: 'Pill-AI',
         short_name: 'PillAI',

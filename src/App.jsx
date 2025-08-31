@@ -8,6 +8,7 @@ import { LearnCard } from './LearnCard.jsx';
 import { NUDGE_MS, buildNudgeTitle, buildNudgeBody } from './notifications/nudgeCopy';
 import { scheduleReminder, cancelReminder } from './notifications/api';
 import { getMessaging, onMessage } from 'firebase/messaging';
+import { medicineNames } from './medicineList.js';
 
 
 // 🚨 Overdue bookkeeping
