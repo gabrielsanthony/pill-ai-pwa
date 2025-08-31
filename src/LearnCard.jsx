@@ -13,6 +13,35 @@ function addXP(n = 1) {
   return next;
 }
 
+// Accept "A/B/C/D" or full text (with/without "A. " prefix) and return index 0..3
+function findCorrectIndex(mcq) {
+  const choices = mcq?.choices || [];
+  const ansRaw = String(mcq?.answer ?? "").trim();
+  if (!choices.length || !ansRaw) return 0;
+
+  // 1) exact text match
+  let idx = choices.findIndex((c) => c.trim().toLowerCase() === ansRaw.toLowerCase());
+  if (idx >= 0) return idx;
+
+  // 2) letter match: A/B/C/D (with optional punctuation)
+  const first = ansRaw[0]?.toUpperCase();
+  const letterIdx = "ABCD".indexOf(first);
+  if (letterIdx >= 0) return letterIdx;
+
+  // 3) strip leading "A. ", "B)", etc. from both sides and compare
+  const norm = (s) => String(s).replace(/^[A-D][.)-]?\s*/i, "").trim().toLowerCase();
+  const normAns = norm(ansRaw);
+  idx = choices.findIndex((c) => norm(c) === normAns);
+  if (idx >= 0) return idx;
+
+  // 4) last-resort fuzzy contains
+  idx = choices.findIndex((c) => {
+    const nc = norm(c);
+    return nc.includes(normAns) || normAns.includes(nc);
+  });
+  return idx >= 0 ? idx : 0;
+}
+
 /* ---------- Component ---------- */
 export function LearnCard({ hasReminder, reminderDrug, setActiveTab }) {
   const [loading, setLoading] = useState(false);
@@ -58,14 +87,14 @@ export function LearnCard({ hasReminder, reminderDrug, setActiveTab }) {
     }
   }
 
-  function checkAnswer() {
-    if (!mcq || picked == null) return;
-    const correctIndex = mcq.choices.findIndex((c) => c === mcq.answer);
-    const isRight = picked === correctIndex;
-    setWasCorrect(isRight);
-    setChecked(true);
-    if (isRight) addXP(1); // ✅ +1 XP per correct
-  }
+function checkAnswer() {
+  if (!mcq || picked == null) return;
+  const correctIndex = findCorrectIndex(mcq);
+  const isRight = picked === correctIndex;
+  setWasCorrect(isRight);
+  setChecked(true);
+  if (isRight) addXP(1); // ✅ +1 XP per correct
+}
 
   function nextQuestion() {
     fetchOneQuestion();
@@ -152,7 +181,9 @@ export function LearnCard({ hasReminder, reminderDrug, setActiveTab }) {
                   background: "rgba(0,0,0,0.04)",
                 }}
               >
-                {wasCorrect ? "✅ Correct! +1 XP" : `❌ Not quite. Correct answer: ${mcq.answer}`}
+                {wasCorrect
+  ? "✅ Correct! +1 XP"
+  : `❌ Not quite. Correct answer: ${mcq.choices[findCorrectIndex(mcq)] ?? mcq.answer}`}
               </div>
               <button className="send-button" onClick={nextQuestion}>
                 Next question
