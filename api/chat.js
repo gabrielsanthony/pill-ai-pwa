@@ -1,5 +1,5 @@
 // /api/chat.js
-// Vercel Node serverless function (Assistants API version, robust message parsing)
+// Vercel Node serverless function (Assistants API + visible errors)
 
 /* 🔒 Domain guard: allow only medicine-related questions */
 const MED_KEYWORDS = [
@@ -13,37 +13,29 @@ const MED_KEYWORDS = [
   'new zealand formulary','nz formulary','pharmac'
 ];
 
-// quick blocklist for common off-topic asks that slipped through
 const OFF_TOPIC_HINTS = [
   'capital of','recipe','how to cook','weather','population',
   'currency of','president of','lyrics','movie plot'
 ];
 
-// normalize text for safer substring checks
 function normalizeText(s = '') {
   return String(s)
     .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s]/gu, ' ')  // punctuation → space
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
-/** Returns true if the question looks medication-related */
 function isMedicineQuestion(q = '') {
   const text = normalizeText(q);
   if (!text || text.length < 3) return false;
-
-  if (OFF_TOPIC_HINTS.some(h => text.includes(h))) return false; // explicit off-topic
-  if (MED_KEYWORDS.some(k => text.includes(k))) return true;     // domain words
-
-  // common phrasings (normalized)
+  if (OFF_TOPIC_HINTS.some(h => text.includes(h))) return false;
+  if (MED_KEYWORDS.some(k => text.includes(k))) return true;
   if (/^what (should|can) i take for /.test(text)) return true;
   if (/^can i take .* with /.test(text)) return true;
-
   return false;
 }
 
-/** Returns true if the model's draft looks medication-related (or is our exact refusal) */
 function looksMedicineAnswer(s = '') {
   const t = normalizeText(s);
   if (!t) return false;
@@ -55,46 +47,59 @@ function looksMedicineAnswer(s = '') {
   return false;
 }
 
+// helper: always send something the UI can display
+function sendAnswer(res, text) {
+  return res.status(200).json({ answer: text });
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // 1) Env & input validation
   const apiKey = process.env.OPENAI_API_KEY;
-  const assistantId = process.env.ASSISTANT_ID; // set in Vercel (asst_...)
+  const assistantId = process.env.ASSISTANT_ID; // asst_...
   if (!apiKey || !assistantId) {
     console.error('[chat] Missing env', { hasKey: !!apiKey, hasAssistant: !!assistantId });
-    return res.status(500).json({ error: 'Server not configured' });
+    return sendAnswer(res, '⚠️ Pill-AI server is not configured (missing API key or Assistant ID).');
   }
 
   const body = req.body || {};
   const question = typeof body.question === 'string' ? body.question.trim() : '';
   const language = typeof body.language === 'string' ? body.language : 'English';
-
   if (question.length < 3) {
     return res.status(400).json({ error: 'Please send a valid question' });
   }
 
-  // 2) SERVER GUARD: refuse non-medicine questions
+  // Gate: off-topic blocked
   if (!isMedicineQuestion(question)) {
     console.log('[chat] GATE: blocked off-topic →', question);
-    return res.status(200).json({
-      answer:
-        "Pill-AI only answers medicine questions using NZ Medsafe Consumer Medicine Information.\n" +
-        "Try asking things like:\n" +
-        "• “What’s the usual adult dose of amoxicillin?”\n" +
-        "• “Can ibuprofen be taken with paracetamol?”\n" +
-        "• “Common side effects of sertraline?”\n" +
-        "• “What should I do if I miss a dose of metformin?”"
-    });
+    return sendAnswer(
+      res,
+      "Pill-AI only answers medicine questions using NZ Medsafe Consumer Medicine Information.\n" +
+      "Try asking things like:\n" +
+      "• “What’s the usual adult dose of amoxicillin?”\n" +
+      "• “Can ibuprofen be taken with paracetamol?”\n" +
+      "• “Common side effects of sertraline?”\n" +
+      "• “What should I do if I miss a dose of metformin?”"
+    );
   }
 
-  // 3) Assistants API (uses your attached File Search + Vector Store)
+  // Assistants API
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 60_000); // assistants can be slower
+  const timeout = setTimeout(() => controller.abort(), 60_000);
 
   try {
+    // 0) Preflight: ensure this API key can see the assistant
+    const asstRes = await fetch(`https://api.openai.com/v1/assistants/${assistantId}`, {
+      headers: { 'Authorization': `Bearer ${apiKey}` }
+    });
+    if (!asstRes.ok) {
+      const t = await asstRes.text().catch(() => '');
+      console.error('[chat] assistant.get failed', asstRes.status, t);
+      return sendAnswer(res, '⚠️ Pill-AI setup issue: Assistant not found for this API key (check project/organization).');
+    }
+
     // a) create a thread with the user's question
     const threadRes = await fetch('https://api.openai.com/v1/threads', {
       method: 'POST',
@@ -102,15 +107,13 @@ export default async function handler(req, res) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({
-        messages: [{ role: 'user', content: question }],
-      }),
+      body: JSON.stringify({ messages: [{ role: 'user', content: question }] }),
       signal: controller.signal,
     });
     if (!threadRes.ok) {
       const t = await threadRes.text().catch(() => '');
       console.error('[chat] threads.create failed', threadRes.status, t);
-      return res.status(502).json({ error: 'OpenAI threads.create failed' });
+      return sendAnswer(res, '⚠️ Pill-AI error creating conversation (threads.create).');
     }
     const thread = await threadRes.json();
 
@@ -130,7 +133,7 @@ export default async function handler(req, res) {
     if (!runRes.ok) {
       const t = await runRes.text().catch(() => '');
       console.error('[chat] runs.create failed', runRes.status, t);
-      return res.status(502).json({ error: 'OpenAI runs.create failed' });
+      return sendAnswer(res, '⚠️ Pill-AI error starting the run (runs.create).');
     }
     const run = await runRes.json();
 
@@ -142,7 +145,7 @@ export default async function handler(req, res) {
       attempts++;
       if (attempts > 120) {
         console.error('[chat] run polling timed out');
-        return res.status(504).json({ error: 'OpenAI run timeout' });
+        return sendAnswer(res, '⚠️ Pill-AI run timed out. Please try again.');
       }
       const check = await fetch(`https://api.openai.com/v1/threads/${thread.id}/runs/${run.id}`, {
         headers: { 'Authorization': `Bearer ${apiKey}` },
@@ -152,14 +155,14 @@ export default async function handler(req, res) {
       status = runState.status;
       if (status === 'failed' || status === 'cancelled' || status === 'expired') {
         console.error('[chat] run ended', status, runState.last_error || '');
-        return res.status(502).json({ error: `OpenAI run ${status}` });
+        return sendAnswer(res, `⚠️ Pill-AI run ${status}.`);
       }
     }
     console.log('[chat] run completed');
 
     clearTimeout(timeout);
 
-    // d) read the messages (asc so the last assistant message is latest)
+    // d) fetch messages (asc so last assistant text is the latest)
     const msgRes = await fetch(
       `https://api.openai.com/v1/threads/${thread.id}/messages?limit=50&order=asc`,
       { headers: { 'Authorization': `Bearer ${apiKey}` } }
@@ -167,7 +170,7 @@ export default async function handler(req, res) {
     if (!msgRes.ok) {
       const t = await msgRes.text().catch(() => '');
       console.error('[chat] messages.list failed', msgRes.status, t);
-      return res.status(502).json({ error: 'OpenAI messages.list failed' });
+      return sendAnswer(res, '⚠️ Pill-AI error reading messages.');
     }
     const list = await msgRes.json();
 
@@ -187,22 +190,22 @@ export default async function handler(req, res) {
     if (answer) {
       if (!looksMedicineAnswer(answer)) {
         console.warn('[chat] Post-guard replaced off-topic output.');
-        return res.status(200).json({ answer: REFUSAL });
+        return sendAnswer(res, REFUSAL);
       }
       console.log('[chat] answer length:', answer.length);
-      return res.status(200).json({ answer });
+      return sendAnswer(res, answer);
     }
 
     console.warn('[chat] No assistant text content.');
-    return res.status(200).json({ answer: '⚠️ No response received.' });
+    return sendAnswer(res, '⚠️ No response received.');
 
   } catch (err) {
     clearTimeout(timeout);
     if (err?.name === 'AbortError') {
       console.error('[chat] Request timed out');
-      return res.status(504).json({ error: 'OpenAI timeout' });
+      return sendAnswer(res, '⚠️ Pill-AI server request timed out.');
     }
     console.error('[chat] Unexpected error:', err);
-    return res.status(500).json({ error: 'Internal Server Error' });
+    return sendAnswer(res, '⚠️ Unexpected server error.');
   }
 }
