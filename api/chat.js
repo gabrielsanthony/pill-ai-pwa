@@ -1,5 +1,5 @@
 // /api/chat.js
-// Vercel Node serverless function (Assistants API version)
+// Vercel Node serverless function (Assistants API version, robust message parsing)
 
 /* 🔒 Domain guard: allow only medicine-related questions */
 const MED_KEYWORDS = [
@@ -23,9 +23,7 @@ const OFF_TOPIC_HINTS = [
 function normalizeText(s = '') {
   return String(s)
     .toLowerCase()
-    // replace punctuation with space (unicode aware)
-    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
-    // collapse multiple spaces
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')  // punctuation → space
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -35,13 +33,10 @@ function isMedicineQuestion(q = '') {
   const text = normalizeText(q);
   if (!text || text.length < 3) return false;
 
-  // explicit off-topic hints → reject early
-  if (OFF_TOPIC_HINTS.some(h => text.includes(h))) return false;
+  if (OFF_TOPIC_HINTS.some(h => text.includes(h))) return false; // explicit off-topic
+  if (MED_KEYWORDS.some(k => text.includes(k))) return true;     // domain words
 
-  // domain keywords → allow
-  if (MED_KEYWORDS.some(k => text.includes(k))) return true;
-
-  // patterns (normalized)
+  // common phrasings (normalized)
   if (/^what (should|can) i take for /.test(text)) return true;
   if (/^can i take .* with /.test(text)) return true;
 
@@ -67,7 +62,7 @@ export default async function handler(req, res) {
 
   // 1) Env & input validation
   const apiKey = process.env.OPENAI_API_KEY;
-  const assistantId = process.env.ASSISTANT_ID; // <-- set in Vercel (asst_...)
+  const assistantId = process.env.ASSISTANT_ID; // set in Vercel (asst_...)
   if (!apiKey || !assistantId) {
     console.error('[chat] Missing env', { hasKey: !!apiKey, hasAssistant: !!assistantId });
     return res.status(500).json({ error: 'Server not configured' });
@@ -76,7 +71,6 @@ export default async function handler(req, res) {
   const body = req.body || {};
   const question = typeof body.question === 'string' ? body.question.trim() : '';
   const language = typeof body.language === 'string' ? body.language : 'English';
-  // const simplify = Boolean(body.simplify); // not used with Assistants, kept for future
 
   if (question.length < 3) {
     return res.status(400).json({ error: 'Please send a valid question' });
@@ -98,7 +92,7 @@ export default async function handler(req, res) {
 
   // 3) Assistants API (uses your attached File Search + Vector Store)
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 40_000);
+  const timeout = setTimeout(() => controller.abort(), 60_000); // assistants can be slower
 
   try {
     // a) create a thread with the user's question
@@ -161,36 +155,41 @@ export default async function handler(req, res) {
         return res.status(502).json({ error: `OpenAI run ${status}` });
       }
     }
+    console.log('[chat] run completed');
 
     clearTimeout(timeout);
 
-    // d) read the latest assistant message
-    const msgRes = await fetch(`https://api.openai.com/v1/threads/${thread.id}/messages?limit=5&order=desc`, {
-      headers: { 'Authorization': `Bearer ${apiKey}` },
-    });
+    // d) read the messages (asc so the last assistant message is latest)
+    const msgRes = await fetch(
+      `https://api.openai.com/v1/threads/${thread.id}/messages?limit=50&order=asc`,
+      { headers: { 'Authorization': `Bearer ${apiKey}` } }
+    );
     if (!msgRes.ok) {
       const t = await msgRes.text().catch(() => '');
       console.error('[chat] messages.list failed', msgRes.status, t);
       return res.status(502).json({ error: 'OpenAI messages.list failed' });
     }
     const list = await msgRes.json();
-    const assistantMsg = (list.data || []).find(m => m.role === 'assistant');
 
-    const parts = (assistantMsg?.content || [])
-      .filter(c => c.type === 'text')
-      .map(c => c.text?.value || '')
-      .join('\n')
-      .trim();
+    // collect all assistant text parts, take the last non-empty
+    const assistantTexts = (list.data || [])
+      .filter(m => m.role === 'assistant')
+      .flatMap(m =>
+        (m.content || [])
+          .filter(c => c.type === 'text')
+          .map(c => c.text?.value || '')
+          .filter(Boolean)
+      );
 
-    const answer = parts || '';
+    const answer = assistantTexts.length ? assistantTexts[assistantTexts.length - 1].trim() : '';
     const REFUSAL = 'Sorry — Pill-AI only answers questions about medicines using Medsafe Consumer Medicine Information.';
 
-    // 4) POST-GUARD: if the assistant freelances off-topic, replace with refusal
     if (answer) {
       if (!looksMedicineAnswer(answer)) {
         console.warn('[chat] Post-guard replaced off-topic output.');
         return res.status(200).json({ answer: REFUSAL });
       }
+      console.log('[chat] answer length:', answer.length);
       return res.status(200).json({ answer });
     }
 
