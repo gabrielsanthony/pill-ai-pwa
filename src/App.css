@@ -133,6 +133,8 @@ input[type="text"], select {
 
 .answer-box strong {
   color: #f58025;
+  display: block;       /* put label on its own line */
+  margin-bottom: 8px;   /* add a bit of space before the text */
 }
 
 .cancel-button {
@@ -602,3 +604,9 @@ select {
 }
 
 .send-button[disabled]{opacity:.6;cursor:not-allowed;}
+
+/* Preserve newlines and allow blank lines inside the answer */
+.answer-box .answer-text {
+  white-space: pre-wrap;
+  line-height: 1.55;
+}

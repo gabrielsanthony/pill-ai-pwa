@@ -32,8 +32,6 @@ function App() {
   const [loading, setLoading] = useState(false);
     const [language, setLanguage] = useState('English');
     const [question, setQuestion] = useState('');
-    const [simplify, setSimplify] = useState(false);
-    const [memory, setMemory] = useState(false);
     const [answer, setAnswer] = useState('');
     const [medsTaken, setMedsTaken] = useState(0);
     const [takenTimestamps, setTakenTimestamps] = useState([]);
@@ -232,7 +230,7 @@ function handleVoiceQuery(transcript) {
   console.log("🤖 Handling voice input:", transcript);
   setQuestion(transcript); // show what was said
 
-  const payload = { question: transcript, language, simplify, memory };
+  const payload = { question: transcript, language, simplify: true, memory: false };
 
   // 🔴 clear the previous answer and show thinking state
   setAnswer('');
@@ -742,7 +740,7 @@ const nextDoseMs = nextDoseTime
                     onSubmit={async (e) => {
   e.preventDefault(); // ⛔ prevent reload
 
-  const payload = { question, language, simplify, memory };
+  const payload = { question, language, simplify: true, memory: false };
 
   // 🔴 clear the previous answer immediately and show a thinking state
   setAnswer('');
@@ -783,34 +781,42 @@ const nextDoseMs = nextDoseTime
   {loading ? 'Thinking…' : 'Send'}
 </button>
 
-                    {/* ✅ Always visible – these are OUTSIDE the reminder form */}
-                    <div className="toggles">
-                        <label>
-                            <input
-                                type="checkbox"
-                                checked={simplify}
-                                onChange={() => setSimplify(!simplify)}
-                            />
-                            ✨ Simplify the answer's language
-                        </label>
-                        <label>
-                            <input
-                                type="checkbox"
-                                checked={memory}
-                                onChange={() => setMemory(!memory)}
-                            />
-                            🧠 Memorise previous answers for context in follow-up questions
-                        </label>
-                    </div>
+{answer && (() => {
+  // Keep your existing spacing tweaks
+  const formatted = String(answer)
+    // blank line before typical caution/safety sentences
+    .replace(
+      /\n(?=(Please check|If you experience|If you have any|It('?|’)s important|Seek medical|Talk to your|Consult (a|your) pharmacist|Consult (a|your) doctor))/i,
+      '\n\n'
+    )
+    // blank line before the Source line
+    .replace(/\n(?=Source:\s*Medsafe)/i, '\n\n');
 
-                    {answer && (
-                        <div>
-                            <div className="answer-box">
-                                <strong>💬 Answer:</strong>
-                                <p><div style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{answer}</div></p>
-                            </div>
-                        </div>
-                    )}
+  // Split out the "Source: Medsafe..." line so we can style it separately
+  const m = formatted.match(/^(.*?)(\n+\s*Source:\s*Medsafe.*)$/is);
+  const body   = m ? m[1].trimEnd() : formatted;
+  const source = m ? m[2].trimStart() : '';
+
+  return (
+    <div>
+      <div className="answer-box">
+        <strong>💬 Answer:</strong>
+        <p className="answer-text">{body}</p>
+
+        {source && (
+          <div
+            className="answer-source"
+            style={{ borderTop: '1px solid #eee', marginTop: 12, paddingTop: 10, color: '#555' }}
+          >
+            {source}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+})()}
+
+
                 </form>
                 )}
                 {activeTab === 'track' && (
