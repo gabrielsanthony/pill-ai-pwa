@@ -57,6 +57,43 @@ function stripInlineCitations(s = '') {
     .trim();
 }
 
+// Turn model output into clean paragraphs and simple one-line hyphen bullets
+function tidyStyle(s = '') {
+  let out = String(s).replace(/\r/g, '');
+
+  // Add a paragraph break before any "What to do:" style section
+  out = out.replace(/\n[^\n]*what to do\s*:\s*/i, '\n\n');
+
+  // Remove emojis/icons at line starts (and inline just in case)
+  out = out
+    .replace(/^\s*(✅|📌|⚠️|👉|🔹|•|\*|–|—)\s*/gm, '')
+    .replace(/(✅|📌|⚠️|👉|🔹)/g, '');
+
+  // Remove headings like "Key points:" / "What to do:" / "Safety first:"
+  out = out.replace(/^\s*(key points?|what to do|safety first)\s*:\s*/gim, '');
+
+  // Convert jammed list separators into real bullet lines:
+  // e.g., "...: - Item A. - Item B." → each on its own "- " line
+  out = out.replace(/([:.!?])\s*-\s+/g, '$1\n- ');
+
+  // Normalize dash + space
+  out = out.replace(/-\s+/g, '- ');
+
+  // Reduce >2 newlines to exactly 2 (paragraph break)
+  out = out.replace(/\n{3,}/g, '\n\n');
+
+  // Collapse non-list single newlines to spaces (keep bullet lines)
+  out = out.replace(/\n(?!-|\n)/g, ' ');
+
+  // Tidy extra spaces
+  out = out.replace(/[ \t]+/g, ' ').trim();
+
+  // Ensure "Source:" sits on its own line if present
+  out = out.replace(/\s*source:\s*/i, '\nSource: ');
+
+  return out;
+}
+
 // Build headers for all OpenAI calls (Assistants v2 + optional project)
 function buildHeaders(apiKey, projectId, includeJson = true) {
   return {
@@ -141,16 +178,12 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         assistant_id: assistantId,
         additional_instructions: `
-Answer in ${language}. Be concise and friendly. Use at most 6 short bullets total.
-
-Format like this (omit a section if not relevant):
-✅ Key points:
-- ...
-📌 What to do:
-- ...
-
+Answer in ${language}. Use plain text only (no emojis, no headings).
+Structure:
+1) Start with a brief 1–2 sentence summary paragraph.
+2) If you need to list effects or actions, use simple one-line bullets with "- " (max 6 bullets).
+3) Optionally end with one plain line: "Source: Medsafe Consumer Medicine Information."
 Do NOT include any inline citation markers such as [4:10†file.txt], [1], or .
-If helpful, end with one plain line: "Source: Medsafe Consumer Medicine Information."
 `,
       }),
       signal: controller.signal,
@@ -217,7 +250,7 @@ if (answer) {
     console.warn('[chat] Post-guard replaced off-topic output.');
     return sendAnswer(res, REFUSAL);
   }
-  const cleaned = stripInlineCitations(answer);
+  const cleaned = tidyStyle(stripInlineCitations(answer));
   console.log('[chat] answer length (cleaned):', cleaned.length);
   return sendAnswer(res, cleaned);
 }
