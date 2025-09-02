@@ -47,6 +47,16 @@ function looksMedicineAnswer(s = '') {
   return false;
 }
 
+function stripInlineCitations(s = '') {
+  return String(s)
+    // remove citation-like bracketed chunks
+    .replace(/\s*[【\[][^】\]\n]{1,120}[】\]]/g, '')
+    // collapse excessive spaces/newlines
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 // Build headers for all OpenAI calls (Assistants v2 + optional project)
 function buildHeaders(apiKey, projectId, includeJson = true) {
   return {
@@ -130,7 +140,18 @@ export default async function handler(req, res) {
       headers: buildHeaders(apiKey, projectId, true),
       body: JSON.stringify({
         assistant_id: assistantId,
-        additional_instructions: `Answer in ${language}. Be concise, use ≤6 bullets when helpful, and follow Pill-AI's safety-first style.`,
+        additional_instructions: `
+Answer in ${language}. Be concise and friendly. Use at most 6 short bullets total.
+
+Format like this (omit a section if not relevant):
+✅ Key points:
+- ...
+📌 What to do:
+- ...
+
+Do NOT include any inline citation markers such as [4:10†file.txt], [1], or .
+If helpful, end with one plain line: "Source: Medsafe Consumer Medicine Information."
+`,
       }),
       signal: controller.signal,
     });
@@ -191,14 +212,15 @@ export default async function handler(req, res) {
     const REFUSAL =
       'Sorry — Pill-AI only answers questions about medicines using Medsafe Consumer Medicine Information.';
 
-    if (answer) {
-      if (!looksMedicineAnswer(answer)) {
-        console.warn('[chat] Post-guard replaced off-topic output.');
-        return sendAnswer(res, REFUSAL);
-      }
-      console.log('[chat] answer length:', answer.length);
-      return sendAnswer(res, answer);
-    }
+if (answer) {
+  if (!looksMedicineAnswer(answer)) {
+    console.warn('[chat] Post-guard replaced off-topic output.');
+    return sendAnswer(res, REFUSAL);
+  }
+  const cleaned = stripInlineCitations(answer);
+  console.log('[chat] answer length (cleaned):', cleaned.length);
+  return sendAnswer(res, cleaned);
+}
 
     console.warn('[chat] No assistant text content.');
     return sendAnswer(res, '⚠️ No response received.');
