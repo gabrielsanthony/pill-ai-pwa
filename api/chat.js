@@ -1,5 +1,5 @@
 // /api/chat.js
-// Vercel Node serverless function (Assistants API + visible errors)
+// Vercel Node serverless function (Assistants v2 + project-aware headers)
 
 /* 🔒 Domain guard: allow only medicine-related questions */
 const MED_KEYWORDS = [
@@ -47,7 +47,17 @@ function looksMedicineAnswer(s = '') {
   return false;
 }
 
-// helper: always send something the UI can display
+// Build headers for all OpenAI calls (Assistants v2 + optional project)
+function buildHeaders(apiKey, projectId, includeJson = true) {
+  return {
+    ...(includeJson ? { 'Content-Type': 'application/json' } : {}),
+    'Authorization': `Bearer ${apiKey}`,
+    'OpenAI-Beta': 'assistants=v2',
+    ...(projectId ? { 'OpenAI-Project': projectId } : {})
+  };
+}
+
+// helper: always return something displayable
 function sendAnswer(res, text) {
   return res.status(200).json({ answer: text });
 }
@@ -58,9 +68,10 @@ export default async function handler(req, res) {
   }
 
   const apiKey = process.env.OPENAI_API_KEY;
-  const assistantId = process.env.ASSISTANT_ID; // asst_...
+  const assistantId = process.env.ASSISTANT_ID;   // asst_...
+  const projectId = process.env.OPENAI_PROJECT_ID || ''; // optional proj_...
   if (!apiKey || !assistantId) {
-    console.error('[chat] Missing env', { hasKey: !!apiKey, hasAssistant: !!assistantId });
+    console.error('[chat] Missing env', { hasKey: !!apiKey, hasAssistant: !!assistantId, projectId });
     return sendAnswer(res, '⚠️ Pill-AI server is not configured (missing API key or Assistant ID).');
   }
 
@@ -71,7 +82,6 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Please send a valid question' });
   }
 
-  // Gate: off-topic blocked
   if (!isMedicineQuestion(question)) {
     console.log('[chat] GATE: blocked off-topic →', question);
     return sendAnswer(
@@ -85,28 +95,25 @@ export default async function handler(req, res) {
     );
   }
 
-  // Assistants API
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 60_000);
 
   try {
-    // 0) Preflight: ensure this API key can see the assistant
-    const asstRes = await fetch(`https://api.openai.com/v1/assistants/${assistantId}`, {
-      headers: { 'Authorization': `Bearer ${apiKey}` }
-    });
+    // 0) Preflight: verify the assistant is visible with this key+project
+    const asstRes = await fetch(
+      `https://api.openai.com/v1/assistants/${assistantId}`,
+      { headers: buildHeaders(apiKey, projectId, false) }
+    );
     if (!asstRes.ok) {
       const t = await asstRes.text().catch(() => '');
       console.error('[chat] assistant.get failed', asstRes.status, t);
-      return sendAnswer(res, '⚠️ Pill-AI setup issue: Assistant not found for this API key (check project/organization).');
+      return sendAnswer(res, '⚠️ Pill-AI setup issue: Assistant not found for this API key/project. Create the API key in the same OpenAI Project as the Assistant.');
     }
 
-    // a) create a thread with the user's question
+    // a) Create a thread with the user's question
     const threadRes = await fetch('https://api.openai.com/v1/threads', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
+      headers: buildHeaders(apiKey, projectId, true),
       body: JSON.stringify({ messages: [{ role: 'user', content: question }] }),
       signal: controller.signal,
     });
@@ -117,13 +124,10 @@ export default async function handler(req, res) {
     }
     const thread = await threadRes.json();
 
-    // b) run the assistant on that thread
+    // b) Run the assistant on that thread
     const runRes = await fetch(`https://api.openai.com/v1/threads/${thread.id}/runs`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
+      headers: buildHeaders(apiKey, projectId, true),
       body: JSON.stringify({
         assistant_id: assistantId,
         additional_instructions: `Answer in ${language}. Be concise, use ≤6 bullets when helpful, and follow Pill-AI's safety-first style.`,
@@ -137,7 +141,7 @@ export default async function handler(req, res) {
     }
     const run = await runRes.json();
 
-    // c) poll until complete
+    // c) Poll until complete
     let status = run.status;
     let attempts = 0;
     while (status === 'queued' || status === 'in_progress' || status === 'requires_action') {
@@ -147,10 +151,10 @@ export default async function handler(req, res) {
         console.error('[chat] run polling timed out');
         return sendAnswer(res, '⚠️ Pill-AI run timed out. Please try again.');
       }
-      const check = await fetch(`https://api.openai.com/v1/threads/${thread.id}/runs/${run.id}`, {
-        headers: { 'Authorization': `Bearer ${apiKey}` },
-        signal: controller.signal,
-      });
+      const check = await fetch(
+        `https://api.openai.com/v1/threads/${thread.id}/runs/${run.id}`,
+        { headers: buildHeaders(apiKey, projectId, false), signal: controller.signal }
+      );
       const runState = await check.json();
       status = runState.status;
       if (status === 'failed' || status === 'cancelled' || status === 'expired') {
@@ -162,10 +166,10 @@ export default async function handler(req, res) {
 
     clearTimeout(timeout);
 
-    // d) fetch messages (asc so last assistant text is the latest)
+    // d) Read messages (asc so last assistant text is latest)
     const msgRes = await fetch(
       `https://api.openai.com/v1/threads/${thread.id}/messages?limit=50&order=asc`,
-      { headers: { 'Authorization': `Bearer ${apiKey}` } }
+      { headers: buildHeaders(apiKey, projectId, false) }
     );
     if (!msgRes.ok) {
       const t = await msgRes.text().catch(() => '');
@@ -174,7 +178,6 @@ export default async function handler(req, res) {
     }
     const list = await msgRes.json();
 
-    // collect all assistant text parts, take the last non-empty
     const assistantTexts = (list.data || [])
       .filter(m => m.role === 'assistant')
       .flatMap(m =>
@@ -185,7 +188,8 @@ export default async function handler(req, res) {
       );
 
     const answer = assistantTexts.length ? assistantTexts[assistantTexts.length - 1].trim() : '';
-    const REFUSAL = 'Sorry — Pill-AI only answers questions about medicines using Medsafe Consumer Medicine Information.';
+    const REFUSAL =
+      'Sorry — Pill-AI only answers questions about medicines using Medsafe Consumer Medicine Information.';
 
     if (answer) {
       if (!looksMedicineAnswer(answer)) {
@@ -198,7 +202,6 @@ export default async function handler(req, res) {
 
     console.warn('[chat] No assistant text content.');
     return sendAnswer(res, '⚠️ No response received.');
-
   } catch (err) {
     clearTimeout(timeout);
     if (err?.name === 'AbortError') {
