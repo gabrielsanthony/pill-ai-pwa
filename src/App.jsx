@@ -29,6 +29,7 @@ let overdueCheckInFlight = false;
 // 💊 TrackCard Component
 
 function App() {
+  const [loading, setLoading] = useState(false);
     const [language, setLanguage] = useState('English');
     const [question, setQuestion] = useState('');
     const [simplify, setSimplify] = useState(false);
@@ -227,32 +228,32 @@ async function checkAndHandleOverdueDoses() {
   setOverdueMap(overdueMap);
 }
 
-    function handleVoiceQuery(transcript) {
-        console.log("🤖 Handling voice input:", transcript);
-        setQuestion(transcript); // Show what was said in the input box
+function handleVoiceQuery(transcript) {
+  console.log("🤖 Handling voice input:", transcript);
+  setQuestion(transcript); // show what was said
 
-        const payload = {
-            question: transcript,
-            language,
-            simplify,
-            memory,
-        };
+  const payload = { question: transcript, language, simplify, memory };
 
-        fetch("/api/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-        })
-            .then((res) => res.json())
-            .then((data) => {
-                setAnswer(data.answer);
-                speakAnswer(data.answer);
-            })
-            .catch((err) => {
-                console.error("❌ Error processing voice input:", err);
-                alert("There was a problem getting the AI answer.");
-            });
-    }
+  // 🔴 clear the previous answer and show thinking state
+  setAnswer('');
+  setLoading(true);
+
+  fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+    .then((res) => res.json())
+    .then((data) => {
+      setAnswer(data.answer || '⚠️ No response received.');
+      speakAnswer(data.answer || '');
+    })
+    .catch((err) => {
+      console.error('❌ Error processing voice input:', err);
+      setAnswer('⚠️ Network error.');
+    })
+    .finally(() => setLoading(false));
+}
 
     function speakAnswer(text) {
         const utterance = new SpeechSynthesisUtterance(text);
@@ -737,31 +738,34 @@ const nextDoseMs = nextDoseTime
             {activeTab === 'ask' && (
                 <form
                     className="card ask-card"
+                    
                     onSubmit={async (e) => {
-                        e.preventDefault(); // ⛔ Prevent page reload on Enter
+  e.preventDefault(); // ⛔ prevent reload
 
-                        const payload = {
-                            question,
-                            language,
-                            simplify,
-                            memory,
-                        };
+  const payload = { question, language, simplify, memory };
 
-                        try {
-                            const response = await fetch("/api/chat", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify(payload),
-                            });
+  // 🔴 clear the previous answer immediately and show a thinking state
+  setAnswer('');
+  setLoading(true);
 
-                            const result = await response.json();
-                            setAnswer(result.answer);
-                            setShowReminderForm(false); // Reset in case they ask a new question
-                        } catch (err) {
-                            console.error(err);
-                            alert("❌ Error fetching response");
-                        }
-                    }}
+  try {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    const result = await response.json();
+    setAnswer(result.answer || '⚠️ No response received.');
+    setShowReminderForm(false);
+  } catch (err) {
+    console.error(err);
+    setAnswer('⚠️ Error fetching response');
+  } finally {
+    setLoading(false);
+  }
+}}
+
                 >
                     <h2 className="card-title">💬 Medicines Chat</h2>
 
@@ -775,9 +779,9 @@ const nextDoseMs = nextDoseTime
                         />
                     </div>
 
-                    <button className="send-button" type="submit">
-                        Send
-                    </button>
+<button className="send-button" type="submit" disabled={loading}>
+  {loading ? 'Thinking…' : 'Send'}
+</button>
 
                     {/* ✅ Always visible – these are OUTSIDE the reminder form */}
                     <div className="toggles">
@@ -803,7 +807,7 @@ const nextDoseMs = nextDoseTime
                         <div>
                             <div className="answer-box">
                                 <strong>💬 Answer:</strong>
-                                <p>{answer}</p>
+                                <p><div style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{answer}</div></p>
                             </div>
                         </div>
                     )}

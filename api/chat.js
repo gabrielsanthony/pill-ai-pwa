@@ -73,8 +73,10 @@ function tidyStyle(s = '') {
   out = out.replace(/^\s*(key points?|what to do|safety first)\s*:\s*/gim, '');
 
   // Convert jammed list separators into real bullet lines:
-  // e.g., "...: - Item A. - Item B." → each on its own "- " line
+  // Case A: punctuation then "- "
   out = out.replace(/([:.!?])\s*-\s+/g, '$1\n- ');
+  // Case B: any whitespace then "- " followed by a letter or "("
+  out = out.replace(/\s+-\s+(?=[A-Za-z(])/g, '\n- ');
 
   // Normalize dash + space
   out = out.replace(/-\s+/g, '- ');
@@ -93,6 +95,8 @@ function tidyStyle(s = '') {
 
   return out;
 }
+
+
 
 // Build headers for all OpenAI calls (Assistants v2 + optional project)
 function buildHeaders(apiKey, projectId, includeJson = true) {

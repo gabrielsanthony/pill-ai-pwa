@@ -600,3 +600,5 @@ select {
 .earn-card .perks-section td:last-child {
   text-align: right;
 }
+
+.send-button[disabled]{opacity:.6;cursor:not-allowed;}
