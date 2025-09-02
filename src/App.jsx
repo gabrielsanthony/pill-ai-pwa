@@ -5,11 +5,9 @@ import logo from './assets/pill-ai-logo.png'; // ✅ Updated image import
 import { requestPermissionAndGetToken } from './firebase-notifications';
 import { useSwipeable } from 'react-swipeable';
 import { LearnCard } from './LearnCard.jsx';
-import { NUDGE_MS, buildNudgeTitle, buildNudgeBody } from './notifications/nudgeCopy';
+import { NUDGE_MS } from './notifications/nudgeCopy';
 import { scheduleReminder, cancelReminder } from './notifications/api';
 import { getMessaging, onMessage } from 'firebase/messaging';
-import { medicineNames } from './medicineList.js';
-
 
 // 🚨 Overdue bookkeeping
 const getOverdueMap = () => {
@@ -56,6 +54,9 @@ function App() {
     // Guards so we attach each foreground listener exactly once
         const swListenerAttachedRef = useRef(false);
         const onMessageUnsubRef = useRef(null);
+        const chatAbortRef = useRef(null); // aborts an in-flight chat stream
+        const answerBoxRef = useRef(null);
+
 
     // Helper to show a toast for a few seconds
     const TOAST_HIDE_MS = 6000;
@@ -226,31 +227,79 @@ async function checkAndHandleOverdueDoses() {
   setOverdueMap(overdueMap);
 }
 
-function handleVoiceQuery(transcript) {
-  console.log("🤖 Handling voice input:", transcript);
-  setQuestion(transcript); // show what was said
+async function handleVoiceQuery(transcript) {
+  const q = (transcript || '').trim();
+  if (!q) return;
+  await streamAnswerForText(q);
+}
 
-  const payload = { question: transcript, language, simplify: true, memory: false };
+// Streams a question string and fills `answer` as chunks arrive.
+// If you pass a non-empty `initialQuestion`, we'll also setQuestion() so the UI shows it.
+async function streamAnswerForText(initialQuestion) {
+  // cancel any in-flight request
+  try { chatAbortRef.current?.abort(); } catch {}
+  const controller = new AbortController();
+  chatAbortRef.current = controller;
 
-  // 🔴 clear the previous answer and show thinking state
+  if (initialQuestion) setQuestion(initialQuestion);
+
+  const payload = { question: initialQuestion || question, language, simplify: true, memory: false };
+
   setAnswer('');
+  setShowReminderForm(false);
   setLoading(true);
 
-  fetch('/api/chat', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  })
-    .then((res) => res.json())
-    .then((data) => {
-      setAnswer(data.answer || '⚠️ No response received.');
-      speakAnswer(data.answer || '');
-    })
-    .catch((err) => {
-      console.error('❌ Error processing voice input:', err);
+  try {
+    const res = await fetch('/api/chat/stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+
+    if (!res.ok || !res.body) {
+      const txt = await res.text().catch(() => '');
+      setAnswer(txt || '⚠️ Error fetching response');
+      return;
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+
+    let done = false;
+    let fullText = ''; // 👈 local accumulator
+
+    while (!done) {
+      const { value, done: d } = await reader.read();
+      done = d;
+      if (value) {
+        const chunk = decoder.decode(value, { stream: !done });
+        fullText += chunk;
+        setAnswer(fullText); // append in UI
+      }
+    }
+
+    // Speak after stream completes (cancel any prior speech first)
+    try { window.speechSynthesis?.cancel(); } catch {}
+    setTimeout(() => speakAnswer(fullText || ''), 0);
+
+  } catch (err) {
+    if (err?.name !== 'AbortError') {
+      console.error(err);
       setAnswer('⚠️ Network error.');
-    })
-    .finally(() => setLoading(false));
+    }
+  } finally {
+    setLoading(false);
+    if (chatAbortRef.current === controller) chatAbortRef.current = null;
+  }
+}
+
+
+async function submitQuestionStreaming(e) {
+  e.preventDefault();
+  const q = (question || '').trim();
+  if (!q) return;           // ignore empty submits
+  await streamAnswerForText('');  // use current `question` state
 }
 
     function speakAnswer(text) {
@@ -408,8 +457,8 @@ useEffect(() => {
 
 
     // ⬇️ ADD THIS BELOW your first useEffect block
-    useEffect(() => {
-  if (answer) {
+useEffect(() => {
+  if (!loading && answer) {
     const name = extractMedicineName(answer);
     const { isLongTerm: LT, days } = extractDuration(answer);
 
@@ -421,7 +470,15 @@ useEffect(() => {
       setDurationDays(days);
     }
   }
+}, [answer, loading]);
+
+useEffect(() => {
+  if (answerBoxRef.current) {
+    answerBoxRef.current.scrollTop = answerBoxRef.current.scrollHeight;
+  }
 }, [answer]);
+
+
 
     // ✅ Automatically request permission + save push token on app load
     useEffect(() => {
@@ -588,61 +645,7 @@ useEffect(() => {
         }
     };
 
-    const TrackCard = () => (
-        <div className="progress-section">
-            <h3>📈 Track Your Medication</h3>
 
-            {!showReminderForm && (
-                <button
-                    className="send-button"
-                    onClick={() => {
-                        setReminderDrug('');
-                        setIsLongTerm(false);
-                        setDurationDays(7);
-                        setTimesPerDay(1);
-                        setDailyTimes(['']);
-                        setShowReminderForm(true);
-                    }}
-                    style={{ marginBottom: '10px' }}
-                >
-                    ➕ Set Med Reminder
-                </button>
-            )}
-
-            {hasReminder && !isCourseComplete && (
-                <>
-                    <progress max="100" value={(medsTaken / (durationDays * timesPerDay)) * 100}></progress>
-                    <p>{Math.floor((medsTaken / (durationDays * timesPerDay)) * 100)}% of your meds journey completed</p>
-                </>
-            )}
-
-            {isDoseWindowOpen() ? (
-                <div>
-                    <button
-                        className="send-button"
-                        onClick={handleMedsTaken}
-                    >
-                        ✅ Meds Taken
-                    </button>
-                    {/* 🔒 Reset button removed for production
-<button className="danger" onClick={handleResetProgress}>
-  🔄 Reset Progress (Testing Only)
-</button>
-*/} 
-                </div>
-            ) : (
-                <div>
-                    <p>⏳ Next dose in: <strong>{timeRemaining}</strong></p>
-                    <button
-                        className="cancel-button small"
-                        onClick={cancelAllReminders}
-                    >
-                        🗑️ Cancel Reminders
-                    </button>
-                </div>
-            )}
-        </div>
-    );
 
 
 const nextDoseMs = nextDoseTime
@@ -734,37 +737,12 @@ const nextDoseMs = nextDoseTime
             <div {...handlers} className={`swipe-wrapper slide-${slideDir}`} key={activeTab}>
                 {/* keep ALL your existing tab conditionals here */}
             {activeTab === 'ask' && (
-                <form
-                    className="card ask-card"
-                    
-                    onSubmit={async (e) => {
-  e.preventDefault(); // ⛔ prevent reload
+                
+<form
+  className="card ask-card"
+  onSubmit={submitQuestionStreaming}
+>
 
-  const payload = { question, language, simplify: true, memory: false };
-
-  // 🔴 clear the previous answer immediately and show a thinking state
-  setAnswer('');
-  setLoading(true);
-
-  try {
-    const response = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-
-    const result = await response.json();
-    setAnswer(result.answer || '⚠️ No response received.');
-    setShowReminderForm(false);
-  } catch (err) {
-    console.error(err);
-    setAnswer('⚠️ Error fetching response');
-  } finally {
-    setLoading(false);
-  }
-}}
-
-                >
                     <h2 className="card-title">💬 Medicines Chat</h2>
 
                     <div className="form-group">
@@ -780,6 +758,19 @@ const nextDoseMs = nextDoseTime
 <button className="send-button" type="submit" disabled={loading}>
   {loading ? 'Thinking…' : 'Send'}
 </button>
+
+{loading && (
+  <button
+    type="button"
+    className="cancel-button small"
+    onClick={() => {
+      try { chatAbortRef.current?.abort(); } catch {}
+    }}
+    style={{ marginLeft: 8 }}
+  >
+    ⛔ Stop
+  </button>
+)}
 
 {answer && (() => {
   // Keep your existing spacing tweaks
@@ -799,7 +790,11 @@ const nextDoseMs = nextDoseTime
 
   return (
     <div>
-      <div className="answer-box">
+      <div
+        className="answer-box"
+        ref={answerBoxRef}
+        style={{ maxHeight: 260, overflowY: 'auto' }}
+      >
         <strong>💬 Answer:</strong>
         <p className="answer-text">{body}</p>
 
@@ -1276,11 +1271,11 @@ try {
                     </details>
                 </div>
                 )}
-                </div>
 
-            </div> {/* closes app-container */}
-        </div>
-        </div>
+ </div> {/* closes swipe-wrapper */}
+        </div> {/* closes card-viewport */}
+      </div> {/* closes app-container */}
+    </div>
     );
-}
+  }
 export default App;
