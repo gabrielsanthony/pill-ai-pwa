@@ -98,7 +98,7 @@ function endStream(res, text) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const apiKey = process.env.OPENAI_OPENAI_API_KEY || process.env.OPENAI_API_KEY; // tolerate either env name
+  const apiKey = process.env.OPENAI_API_KEY;
   const assistantId = process.env.ASSISTANT_ID;   // asst_...
   const projectId = process.env.OPENAI_PROJECT_ID || '';
 
@@ -179,66 +179,80 @@ Do NOT include inline citation markers such as [4:10], [1], etc.
     }
     const run = await runRes.json();
 
-    // === STREAMING BRANCH ===
-    if (wantStream) {
-      res.writeHead(200, {
-        'Content-Type': 'text/plain; charset=utf-8',
-        'Cache-Control': 'no-cache, no-transform',
-        'Connection': 'keep-alive',
-        'X-Accel-Buffering': 'no',
-      });
+// === STREAMING BRANCH ===
+if (wantStream) {
+  res.writeHead(200, {
+    'Content-Type': 'text/plain; charset=utf-8',
+    'Cache-Control': 'no-cache, no-transform',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
 
-      let status = run.status;
-      let attempts = 0;
-      let lastLen = 0;
+  let status = run.status;
+  let attempts = 0;
 
-      // helper: read all assistant text so far
-      const readAssistantText = async () => {
-        const msgRes = await fetch(
-          `https://api.openai.com/v1/threads/${thread.id}/messages?limit=50&order=asc`,
-          { headers: buildHeaders(apiKey, projectId, false), signal: controller.signal }
-        );
-        const list = await msgRes.json();
-        const texts = (list.data || [])
-          .filter(m => m.role === 'assistant')
-          .flatMap(m => (m.content || [])
-            .filter(c => c.type === 'text')
-            .map(c => c.text?.value || '')
-          );
-        return texts.join('\n\n');
-      };
+  // Track how much CLEANED text we've already sent
+  let lastCleanLen = 0;
 
-      while (status === 'queued' || status === 'in_progress' || status === 'requires_action') {
-        await new Promise(r => setTimeout(r, 700));
-        attempts++;
-        if (attempts > 180) { res.write('\n\n⚠️ (Timeout — please try again.)'); return res.end(); }
+  // helper: read all assistant text so far (raw)
+  const readAssistantText = async () => {
+    const msgRes = await fetch(
+      `https://api.openai.com/v1/threads/${thread.id}/messages?limit=50&order=asc`,
+      { headers: buildHeaders(apiKey, projectId, false), signal: controller.signal }
+    );
+    const list = await msgRes.json();
+    const texts = (list.data || [])
+      .filter(m => m.role === 'assistant')
+      .flatMap(m =>
+        (m.content || [])
+          .filter(c => c.type === 'text')
+          .map(c => c.text?.value || '')
+      );
+    return texts.join('\n\n');
+  };
 
-        // emit any new text since last tick
-        try {
-          const soFar = await readAssistantText();
-          if (soFar && soFar.length > lastLen) {
-            const delta = soFar.slice(lastLen);
-            res.write(delta);
-            lastLen = soFar.length;
-          }
-        } catch {}
-
-        // check run status
-        const check = await fetch(
-          `https://api.openai.com/v1/threads/${thread.id}/runs/${run.id}`,
-          { headers: buildHeaders(apiKey, projectId, false), signal: controller.signal }
-        );
-        const runState = await check.json();
-        status = runState.status;
-        if (status === 'failed' || status === 'cancelled' || status === 'expired') {
-          res.write(`\n\n⚠️ Run ${status}.`);
-          return res.end();
-        }
-      }
-
-      clearTimeout(timeout);
+  while (status === 'queued' || status === 'in_progress' || status === 'requires_action') {
+    // gentle poll
+    await new Promise(r => setTimeout(r, 700));
+    attempts++;
+    if (attempts > 180) {
+      res.write('\n\n⚠️ (Timeout — please try again.)');
       return res.end();
     }
+
+    // 1) Pull everything so far
+    let soFar = '';
+    try {
+      soFar = await readAssistantText();
+    } catch (_) {
+      // ignore transient read errors
+    }
+
+    // 2) Clean it (remove inline citations, tidy bullets/spacing)
+    const cleanedSoFar = tidyStyle(stripInlineCitations(soFar));
+
+    // 3) Stream only the new cleaned delta
+    if (cleanedSoFar.length > lastCleanLen) {
+      res.write(cleanedSoFar.slice(lastCleanLen));
+      lastCleanLen = cleanedSoFar.length;
+    }
+
+    // 4) Check run status
+    const check = await fetch(
+      `https://api.openai.com/v1/threads/${thread.id}/runs/${run.id}`,
+      { headers: buildHeaders(apiKey, projectId, false), signal: controller.signal }
+    );
+    const runState = await check.json();
+    status = runState.status;
+    if (status === 'failed' || status === 'cancelled' || status === 'expired') {
+      res.write(`\n\n⚠️ Run ${status}.`);
+      return res.end();
+    }
+  }
+
+  clearTimeout(timeout);
+  return res.end();
+}
 
     // === NON-STREAMING BRANCH (original JSON response) ===
     // poll until complete

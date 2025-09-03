@@ -168,6 +168,36 @@ function extractDuration(text) {
   return { isLongTerm: false, days: null };
 }
 
+// --- Client-side cleaners used for streamed text ---
+function stripInlineCitationsUI(s = '') {
+  return String(s)
+    // remove bracketed inline citations like  or [1]
+    .replace(/\s*[【\[][^】\]\n]{1,120}[】\]]/g, '')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function tidyStyleUI(s = '') {
+  let out = String(s).replace(/\r/g, '');
+
+  // remove bullets/emojis at line starts
+  out = out
+    .replace(/^\s*(✅|📌|⚠️|👉|🔹|•|\*|–|—)\s*/gm, '')
+    .replace(/(✅|📌|⚠️|👉|🔹)/g, '');
+
+  // normalize "- " bullets and spacing
+  out = out.replace(/([:.!?])\s*-\s+/g, '$1\n- ');
+  out = out.replace(/\s+-\s+(?=[A-Za-z(])/g, '\n- ');
+  out = out.replace(/-\s+/g, '- ');
+  out = out.replace(/\n{3,}/g, '\n\n');
+  out = out.replace(/\n(?!-|\n)/g, ' ');
+  out = out.replace(/[ \t]+/g, ' ').trim();
+  out = out.replace(/\s*source:\s*/i, '\nSource: ');
+
+  return out;
+}
+
 
     // ✅ Only allow Meds Taken button if within 30 min of next dose
 function isDoseWindowOpen() {
@@ -230,20 +260,29 @@ async function checkAndHandleOverdueDoses() {
 async function handleVoiceQuery(transcript) {
   const q = (transcript || '').trim();
   if (!q) return;
-  await streamAnswerForText(q);
+ await streamAnswerForText(q, { speak: true }); // ← speak only for Voice tab
 }
 
 // Streams a question string and fills `answer` as chunks arrive.
-// If you pass a non-empty `initialQuestion`, we'll also setQuestion() so the UI shows it.
-async function streamAnswerForText(initialQuestion) {
-  // cancel any in-flight request
+// If options.speak === true, read the final answer aloud (used by Voice tab only).
+async function streamAnswerForText(initialQuestion, options = {}) {
+  const speak = !!options.speak;
+
+  // cancel any in-flight request and any ongoing speech
   try { chatAbortRef.current?.abort(); } catch {}
+  try { window.speechSynthesis?.cancel(); } catch {}
+
   const controller = new AbortController();
   chatAbortRef.current = controller;
 
   if (initialQuestion) setQuestion(initialQuestion);
 
-  const payload = { question: initialQuestion || question, language, simplify: true, memory: false };
+  const payload = {
+    question: initialQuestion || question,
+    language,
+    simplify: true,
+    memory: false
+  };
 
   setAnswer('');
   setShowReminderForm(false);
@@ -267,7 +306,7 @@ async function streamAnswerForText(initialQuestion) {
     const decoder = new TextDecoder();
 
     let done = false;
-    let fullText = ''; // 👈 local accumulator
+    let fullText = '';
 
     while (!done) {
       const { value, done: d } = await reader.read();
@@ -275,14 +314,18 @@ async function streamAnswerForText(initialQuestion) {
       if (value) {
         const chunk = decoder.decode(value, { stream: !done });
         fullText += chunk;
-        setAnswer(fullText); // append in UI
+
+        // ✂️ Clean as it streams (remove citations, tidy bullets/spacing)
+        const cleaned = tidyStyleUI(stripInlineCitationsUI(fullText));
+        setAnswer(cleaned);
       }
     }
 
-    // Speak after stream completes (cancel any prior speech first)
-    try { window.speechSynthesis?.cancel(); } catch {}
-    setTimeout(() => speakAnswer(fullText || ''), 0);
-
+    // Speak only if this was a voice-initiated query
+    if (speak) {
+      const finalCleaned = tidyStyleUI(stripInlineCitationsUI(fullText || ''));
+      setTimeout(() => speakAnswer(finalCleaned), 0);
+    }
   } catch (err) {
     if (err?.name !== 'AbortError') {
       console.error(err);
