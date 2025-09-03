@@ -203,10 +203,11 @@ const runRes = await fetch(`https://api.openai.com/v1/threads/${thread.id}/runs`
       const decoder = new TextDecoder('utf-8');
       let buffer = '';
 
-      const flushText = (raw) => {
-        const cleaned = tidyStyle(stripInlineCitations(raw || ''));
-        if (cleaned) res.write(cleaned);
-      };
+// Do NOT clean/trim per-chunk; that deletes spaces at chunk boundaries.
+// The client cleans the accumulated text.
+const flushText = (raw = '') => {
+  res.write(raw.replace(/\s*[【\[][^】\]\n]{1,120}[】\]]/g, ''));
+};
 
       while (true) {
         const { value, done } = await reader.read();
