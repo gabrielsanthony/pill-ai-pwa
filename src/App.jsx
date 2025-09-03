@@ -517,7 +517,7 @@ useEffect(() => {
 
 useEffect(() => {
   if (answerBoxRef.current) {
-    answerBoxRef.current.scrollTop = answerBoxRef.current.scrollHeight;
+    answerBoxRef.current.scrollTop = 0; // stay at top while it streams
   }
 }, [answer]);
 
@@ -833,23 +833,22 @@ const nextDoseMs = nextDoseTime
 
   return (
     <div>
-      <div
-        className="answer-box"
-        ref={answerBoxRef}
-        style={{ maxHeight: 260, overflowY: 'auto' }}
-      >
-        <strong>💬 Answer:</strong>
-        <p className="answer-text">{body}</p>
+<div
+  className="answer-box"
+  ref={answerBoxRef}
+  style={{ maxHeight: 260, overflowY: 'auto' }}
+>
+  <p className="answer-text">{body}</p>
 
-        {source && (
-          <div
-            className="answer-source"
-            style={{ borderTop: '1px solid #eee', marginTop: 12, paddingTop: 10, color: '#555' }}
-          >
-            {source}
-          </div>
-        )}
-      </div>
+  {source && (
+    <div
+      className="answer-source"
+      style={{ borderTop: '1px solid #eee', marginTop: 12, paddingTop: 10, color: '#555' }}
+    >
+      {source}
+    </div>
+  )}
+</div>
     </div>
   );
 })()}
