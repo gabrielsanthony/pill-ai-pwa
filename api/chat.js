@@ -170,12 +170,15 @@ Do NOT include inline citation markers such as [4:10], [1], etc.
       ...(wantStream ? { stream: true } : {})
     };
 
-    const runRes = await fetch(`https://api.openai.com/v1/threads/${thread.id}/runs`, {
-      method: 'POST',
-      headers: buildHeaders(apiKey, projectId, true),
-      body: JSON.stringify(runCreateBody),
-      signal: controller.signal,
-    });
+const runRes = await fetch(`https://api.openai.com/v1/threads/${thread.id}/runs`, {
+  method: 'POST',
+  headers: {
+    ...buildHeaders(apiKey, projectId, true),
+    Accept: 'text/event-stream', // 👈 explicitly request SSE
+  },
+  body: JSON.stringify(runCreateBody),
+  signal: controller.signal,
+});
 
     if (!runRes.ok) {
       const msg = '⚠️ Pill-AI error starting the run (runs.create).';
@@ -214,26 +217,59 @@ Do NOT include inline citation markers such as [4:10], [1], etc.
         const frames = buffer.split('\n\n');
         buffer = frames.pop() || '';
 
-        for (const frame of frames) {
-          const lines = frame.split('\n');
-          const dataLine = lines.find(l => l.startsWith('data: '));
-          if (!dataLine) continue;
+for (const frame of frames) {
+  const lines = frame.split('\n').filter(Boolean);
 
-          const jsonStr = dataLine.slice(6).trim();
-          if (!jsonStr || jsonStr === '[DONE]') continue;
+  // Read both the event name and the data payload
+  const eventLine = lines.find(l => l.startsWith('event:'));
+  const dataLine  = lines.find(l => l.startsWith('data:'));
+  if (!dataLine) continue;
 
-          let evt;
-          try { evt = JSON.parse(jsonStr); } catch { continue; }
+  const eventName = eventLine ? eventLine.replace(/^event:\s*/, '').trim() : '';
+  const jsonStr   = dataLine.replace(/^data:\s*/, '').trim();
+  if (!jsonStr || jsonStr === '[DONE]') continue;
 
-          if (evt.type === 'response.output_text.delta' && evt.delta?.text) {
-            flushText(evt.delta.text);
-          } else if (evt.type === 'thread.message.delta') {
-            const t = evt.delta?.content?.[0]?.text?.value;
-            if (t) flushText(t);
-          } else if (evt.type === 'response.completed' || evt.type === 'response.completed.success') {
-            // no-op
-          }
-        }
+  let payload;
+  try { payload = JSON.parse(jsonStr); } catch { continue; }
+
+  switch (eventName) {
+    // New Responses API event
+    case 'response.output_text.delta': {
+      const t = payload?.delta?.text;
+      if (t) flushText(t);
+      break;
+    }
+
+    // Assistants v2 event (most common)
+    case 'thread.message.delta': {
+      const t =
+        payload?.delta?.content?.[0]?.text?.value ||   // older shape
+        payload?.delta?.content?.[0]?.text_delta ||    // newer shape
+        '';
+      if (t) flushText(t);
+      break;
+    }
+
+    // Terminal events – nothing to write
+    case 'response.completed':
+    case 'response.completed.success':
+    case 'thread.run.completed':
+    case 'thread.message.completed':
+      break;
+
+    // Defensive fallback (write any text-like delta we recognize)
+    default: {
+      const t =
+        payload?.delta?.text ||
+        payload?.delta?.content?.[0]?.text?.value ||
+        payload?.delta?.content?.[0]?.text_delta ||
+        payload?.content?.[0]?.text?.value ||
+        '';
+      if (t) flushText(t);
+    }
+  }
+}
+
       }
 
       clearTimeout(timeout);

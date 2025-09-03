@@ -290,11 +290,15 @@ async function streamAnswerForText(initialQuestion, options = {}) {
 
   try {
     const res = await fetch('/api/chat?stream=1', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      signal: controller.signal,
-    });
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'text/plain'        // 👈 stream is plain text
+  },
+  body: JSON.stringify(payload),
+  signal: controller.signal,
+  cache: 'no-store'               // 👈 avoid intermediaries buffering
+});
 
     if (!res.ok || !res.body) {
       const txt = await res.text().catch(() => '');
@@ -320,6 +324,21 @@ async function streamAnswerForText(initialQuestion, options = {}) {
         setAnswer(cleaned);
       }
     }
+
+    // If the stream produced no text (edge runtimes, proxies), fall back to non-stream
+if (!fullText.trim()) {
+  try {
+    const r2 = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const j = await r2.json().catch(() => null);
+    setAnswer(j?.answer || '⚠️ No response received.');
+  } catch {
+    setAnswer('⚠️ Network error.');
+  }
+}
 
     // Speak only if this was a voice-initiated query
     if (speak) {
