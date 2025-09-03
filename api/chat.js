@@ -25,7 +25,6 @@ function normalizeText(s = '') {
     .replace(/\s+/g, ' ')
     .trim();
 }
-
 function isMedicineQuestion(q = '') {
   const text = normalizeText(q);
   if (!text || text.length < 3) return false;
@@ -35,68 +34,37 @@ function isMedicineQuestion(q = '') {
   if (/^can i take .* with /.test(text)) return true;
   return false;
 }
-
 function looksMedicineAnswer(s = '') {
   const t = normalizeText(s);
   if (!t) return false;
   if (OFF_TOPIC_HINTS.some(h => t.includes(h))) return false;
   if (MED_KEYWORDS.some(k => t.includes(k))) return true;
-  if (t.includes('pill ai only answers questions about medicines using medsafe consumer medicine information')) {
-    return true;
-  }
+  if (t.includes('pill ai only answers questions about medicines using medsafe consumer medicine information')) return true;
   return false;
 }
-
 function stripInlineCitations(s = '') {
   return String(s)
-    // remove citation-like bracketed chunks
     .replace(/\s*[【\[][^】\]\n]{1,120}[】\]]/g, '')
-    // collapse excessive spaces/newlines
     .replace(/[ \t]+\n/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
-
-// Turn model output into clean paragraphs and simple one-line hyphen bullets
 function tidyStyle(s = '') {
   let out = String(s).replace(/\r/g, '');
-
-  // Add a paragraph break before any "What to do:" style section
   out = out.replace(/\n[^\n]*what to do\s*:\s*/i, '\n\n');
-
-  // Remove emojis/icons at line starts (and inline just in case)
   out = out
     .replace(/^\s*(✅|📌|⚠️|👉|🔹|•|\*|–|—)\s*/gm, '')
     .replace(/(✅|📌|⚠️|👉|🔹)/g, '');
-
-  // Remove headings like "Key points:" / "What to do:" / "Safety first:"
   out = out.replace(/^\s*(key points?|what to do|safety first)\s*:\s*/gim, '');
-
-  // Convert jammed list separators into real bullet lines:
-  // Case A: punctuation then "- "
   out = out.replace(/([:.!?])\s*-\s+/g, '$1\n- ');
-  // Case B: any whitespace then "- " followed by a letter or "("
   out = out.replace(/\s+-\s+(?=[A-Za-z(])/g, '\n- ');
-
-  // Normalize dash + space
   out = out.replace(/-\s+/g, '- ');
-
-  // Reduce >2 newlines to exactly 2 (paragraph break)
   out = out.replace(/\n{3,}/g, '\n\n');
-
-  // Collapse non-list single newlines to spaces (keep bullet lines)
   out = out.replace(/\n(?!-|\n)/g, ' ');
-
-  // Tidy extra spaces
   out = out.replace(/[ \t]+/g, ' ').trim();
-
-  // Ensure "Source:" sits on its own line if present
   out = out.replace(/\s*source:\s*/i, '\nSource: ');
-
   return out;
 }
-
-
 
 // Build headers for all OpenAI calls (Assistants v2 + optional project)
 function buildHeaders(apiKey, projectId, includeJson = true) {
@@ -108,60 +76,74 @@ function buildHeaders(apiKey, projectId, includeJson = true) {
   };
 }
 
-// helper: always return something displayable
+// helper: always return something displayable (JSON path)
 function sendAnswer(res, text) {
   return res.status(200).json({ answer: text });
 }
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+// helper: early-exit for the streaming path
+function endStream(res, text) {
+  if (!res.headersSent) {
+    res.writeHead(200, {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
   }
+  if (text) res.write(text);
+  try { res.end(); } catch {}
+}
 
-  const apiKey = process.env.OPENAI_API_KEY;
+export default async function handler(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  const apiKey = process.env.OPENAI_OPENAI_API_KEY || process.env.OPENAI_API_KEY; // tolerate either env name
   const assistantId = process.env.ASSISTANT_ID;   // asst_...
-  const projectId = process.env.OPENAI_PROJECT_ID || ''; // optional proj_...
+  const projectId = process.env.OPENAI_PROJECT_ID || '';
+
+  // detect stream=1 in the query or URL
+  const wantStream =
+    (req.query && String(req.query.stream).toLowerCase() === '1') ||
+    (req.url && /\bstream=1\b/.test(req.url));
+
   if (!apiKey || !assistantId) {
-    console.error('[chat] Missing env', { hasKey: !!apiKey, hasAssistant: !!assistantId, projectId });
-    return sendAnswer(res, '⚠️ Pill-AI server is not configured (missing API key or Assistant ID).');
+    const msg = '⚠️ Pill-AI server is not configured (missing API key or Assistant ID).';
+    return wantStream ? endStream(res, msg) : sendAnswer(res, msg);
   }
 
   const body = req.body || {};
   const question = typeof body.question === 'string' ? body.question.trim() : '';
   const language = typeof body.language === 'string' ? body.language : 'English';
   if (question.length < 3) {
-    return res.status(400).json({ error: 'Please send a valid question' });
+    return wantStream ? endStream(res, 'Please send a valid question') : res.status(400).json({ error: 'Please send a valid question' });
   }
 
   if (!isMedicineQuestion(question)) {
-    console.log('[chat] GATE: blocked off-topic →', question);
-    return sendAnswer(
-      res,
+    const refusal =
       "Pill-AI only answers medicine questions using NZ Medsafe Consumer Medicine Information.\n" +
       "Try asking things like:\n" +
       "• “What’s the usual adult dose of amoxicillin?”\n" +
       "• “Can ibuprofen be taken with paracetamol?”\n" +
       "• “Common side effects of sertraline?”\n" +
-      "• “What should I do if I miss a dose of metformin?”"
-    );
+      "• “What should I do if I miss a dose of metformin?”";
+    return wantStream ? endStream(res, refusal) : sendAnswer(res, refusal);
   }
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 60_000);
 
   try {
-    // 0) Preflight: verify the assistant is visible with this key+project
-    const asstRes = await fetch(
-      `https://api.openai.com/v1/assistants/${assistantId}`,
-      { headers: buildHeaders(apiKey, projectId, false) }
-    );
+    // 0) check assistant exists
+    const asstRes = await fetch(`https://api.openai.com/v1/assistants/${assistantId}`, {
+      headers: buildHeaders(apiKey, projectId, false)
+    });
     if (!asstRes.ok) {
-      const t = await asstRes.text().catch(() => '');
-      console.error('[chat] assistant.get failed', asstRes.status, t);
-      return sendAnswer(res, '⚠️ Pill-AI setup issue: Assistant not found for this API key/project. Create the API key in the same OpenAI Project as the Assistant.');
+      const msg = '⚠️ Pill-AI setup issue: Assistant not found for this API key/project.';
+      return wantStream ? endStream(res, msg) : sendAnswer(res, msg);
     }
 
-    // a) Create a thread with the user's question
+    // a) create thread
     const threadRes = await fetch('https://api.openai.com/v1/threads', {
       method: 'POST',
       headers: buildHeaders(apiKey, projectId, true),
@@ -169,13 +151,12 @@ export default async function handler(req, res) {
       signal: controller.signal,
     });
     if (!threadRes.ok) {
-      const t = await threadRes.text().catch(() => '');
-      console.error('[chat] threads.create failed', threadRes.status, t);
-      return sendAnswer(res, '⚠️ Pill-AI error creating conversation (threads.create).');
+      const msg = '⚠️ Pill-AI error creating conversation (threads.create).';
+      return wantStream ? endStream(res, msg) : sendAnswer(res, msg);
     }
     const thread = await threadRes.json();
 
-    // b) Run the assistant on that thread
+    // b) start run
     const runRes = await fetch(`https://api.openai.com/v1/threads/${thread.id}/runs`, {
       method: 'POST',
       headers: buildHeaders(apiKey, projectId, true),
@@ -184,31 +165,89 @@ export default async function handler(req, res) {
         additional_instructions: `
 Answer in ${language}. Use plain text only (no emojis, no headings).
 Structure:
-1) Start with a brief 1–2 sentence summary paragraph.
-2) If you need to list effects or actions, use simple one-line bullets with "- " (max 6 bullets).
-3) Optionally end with one plain line: "Source: Medsafe Consumer Medicine Information."
-Do NOT include any inline citation markers such as [4:10†file.txt], [1], or .
+1) Brief 1–2 sentence summary.
+2) If you need a list, use one-line "- " bullets (max 6).
+3) Optionally end with: "Source: Medsafe Consumer Medicine Information."
+Do NOT include inline citation markers such as [4:10], [1], etc.
 `,
       }),
       signal: controller.signal,
     });
     if (!runRes.ok) {
-      const t = await runRes.text().catch(() => '');
-      console.error('[chat] runs.create failed', runRes.status, t);
-      return sendAnswer(res, '⚠️ Pill-AI error starting the run (runs.create).');
+      const msg = '⚠️ Pill-AI error starting the run (runs.create).';
+      return wantStream ? endStream(res, msg) : sendAnswer(res, msg);
     }
     const run = await runRes.json();
 
-    // c) Poll until complete
+    // === STREAMING BRANCH ===
+    if (wantStream) {
+      res.writeHead(200, {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
+        'Connection': 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      });
+
+      let status = run.status;
+      let attempts = 0;
+      let lastLen = 0;
+
+      // helper: read all assistant text so far
+      const readAssistantText = async () => {
+        const msgRes = await fetch(
+          `https://api.openai.com/v1/threads/${thread.id}/messages?limit=50&order=asc`,
+          { headers: buildHeaders(apiKey, projectId, false), signal: controller.signal }
+        );
+        const list = await msgRes.json();
+        const texts = (list.data || [])
+          .filter(m => m.role === 'assistant')
+          .flatMap(m => (m.content || [])
+            .filter(c => c.type === 'text')
+            .map(c => c.text?.value || '')
+          );
+        return texts.join('\n\n');
+      };
+
+      while (status === 'queued' || status === 'in_progress' || status === 'requires_action') {
+        await new Promise(r => setTimeout(r, 700));
+        attempts++;
+        if (attempts > 180) { res.write('\n\n⚠️ (Timeout — please try again.)'); return res.end(); }
+
+        // emit any new text since last tick
+        try {
+          const soFar = await readAssistantText();
+          if (soFar && soFar.length > lastLen) {
+            const delta = soFar.slice(lastLen);
+            res.write(delta);
+            lastLen = soFar.length;
+          }
+        } catch {}
+
+        // check run status
+        const check = await fetch(
+          `https://api.openai.com/v1/threads/${thread.id}/runs/${run.id}`,
+          { headers: buildHeaders(apiKey, projectId, false), signal: controller.signal }
+        );
+        const runState = await check.json();
+        status = runState.status;
+        if (status === 'failed' || status === 'cancelled' || status === 'expired') {
+          res.write(`\n\n⚠️ Run ${status}.`);
+          return res.end();
+        }
+      }
+
+      clearTimeout(timeout);
+      return res.end();
+    }
+
+    // === NON-STREAMING BRANCH (original JSON response) ===
+    // poll until complete
     let status = run.status;
     let attempts = 0;
     while (status === 'queued' || status === 'in_progress' || status === 'requires_action') {
       await new Promise(r => setTimeout(r, 800));
       attempts++;
-      if (attempts > 120) {
-        console.error('[chat] run polling timed out');
-        return sendAnswer(res, '⚠️ Pill-AI run timed out. Please try again.');
-      }
+      if (attempts > 120) return sendAnswer(res, '⚠️ Pill-AI run timed out. Please try again.');
       const check = await fetch(
         `https://api.openai.com/v1/threads/${thread.id}/runs/${run.id}`,
         { headers: buildHeaders(apiKey, projectId, false), signal: controller.signal }
@@ -216,58 +255,40 @@ Do NOT include any inline citation markers such as [4:10†file.txt], [1], or .
       const runState = await check.json();
       status = runState.status;
       if (status === 'failed' || status === 'cancelled' || status === 'expired') {
-        console.error('[chat] run ended', status, runState.last_error || '');
         return sendAnswer(res, `⚠️ Pill-AI run ${status}.`);
       }
     }
-    console.log('[chat] run completed');
-
     clearTimeout(timeout);
 
-    // d) Read messages (asc so last assistant text is latest)
+    // read final messages
     const msgRes = await fetch(
       `https://api.openai.com/v1/threads/${thread.id}/messages?limit=50&order=asc`,
       { headers: buildHeaders(apiKey, projectId, false) }
     );
-    if (!msgRes.ok) {
-      const t = await msgRes.text().catch(() => '');
-      console.error('[chat] messages.list failed', msgRes.status, t);
-      return sendAnswer(res, '⚠️ Pill-AI error reading messages.');
-    }
-    const list = await msgRes.json();
+    if (!msgRes.ok) return sendAnswer(res, '⚠️ Pill-AI error reading messages.');
 
+    const list = await msgRes.json();
     const assistantTexts = (list.data || [])
       .filter(m => m.role === 'assistant')
-      .flatMap(m =>
-        (m.content || [])
-          .filter(c => c.type === 'text')
-          .map(c => c.text?.value || '')
-          .filter(Boolean)
+      .flatMap(m => (m.content || [])
+        .filter(c => c.type === 'text')
+        .map(c => c.text?.value || '')
+        .filter(Boolean)
       );
 
     const answer = assistantTexts.length ? assistantTexts[assistantTexts.length - 1].trim() : '';
-    const REFUSAL =
-      'Sorry — Pill-AI only answers questions about medicines using Medsafe Consumer Medicine Information.';
+    const REFUSAL = 'Sorry — Pill-AI only answers questions about medicines using Medsafe Consumer Medicine Information.';
 
-if (answer) {
-  if (!looksMedicineAnswer(answer)) {
-    console.warn('[chat] Post-guard replaced off-topic output.');
-    return sendAnswer(res, REFUSAL);
-  }
-  const cleaned = tidyStyle(stripInlineCitations(answer));
-  console.log('[chat] answer length (cleaned):', cleaned.length);
-  return sendAnswer(res, cleaned);
-}
+    if (answer) {
+      if (!looksMedicineAnswer(answer)) return sendAnswer(res, REFUSAL);
+      const cleaned = tidyStyle(stripInlineCitations(answer));
+      return sendAnswer(res, cleaned);
+    }
 
-    console.warn('[chat] No assistant text content.');
     return sendAnswer(res, '⚠️ No response received.');
   } catch (err) {
     clearTimeout(timeout);
-    if (err?.name === 'AbortError') {
-      console.error('[chat] Request timed out');
-      return sendAnswer(res, '⚠️ Pill-AI server request timed out.');
-    }
-    console.error('[chat] Unexpected error:', err);
-    return sendAnswer(res, '⚠️ Unexpected server error.');
+    if (err?.name === 'AbortError') return wantStream ? endStream(res, '⚠️ Request timed out.') : sendAnswer(res, '⚠️ Pill-AI server request timed out.');
+    return wantStream ? endStream(res, '⚠️ Unexpected server error.') : sendAnswer(res, '⚠️ Unexpected server error.');
   }
 }
