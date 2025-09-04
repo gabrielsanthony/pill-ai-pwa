@@ -8,6 +8,8 @@ import { LearnCard } from './LearnCard.jsx';
 import { NUDGE_MS } from './notifications/nudgeCopy';
 import { scheduleReminder, cancelReminder } from './notifications/api';
 import { getMessaging, onMessage } from 'firebase/messaging';
+import CheerSquad from './CheerSquad.jsx';
+
 
 // 🚨 Overdue bookkeeping
 const getOverdueMap = () => {
@@ -1235,7 +1237,9 @@ try {
 
                     )}
                 </div>
-
+                {/* 👥 Cheer Squad section (MVP UI only) */}
+                <CheerSquad />
+                
                 {isCourseComplete && (
                     <div className="progress-section">
                         <h3>🎉 Great job!</h3>
