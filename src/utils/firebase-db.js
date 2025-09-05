@@ -22,9 +22,27 @@ export async function createJoinLink(ownerId, ownerName) {
   return { code, url };
 }
 
-// (We’ll finish this in a later step)
+import { getDoc } from 'firebase/firestore'; // ← make sure this import exists at top
+
 export async function completeJoin(code, supporterName) {
-  return { code, supporterName };
+  // 1) Look up the join code
+  const codeRef = doc(collection(db, 'joinCodes'), code);
+  const snap = await getDoc(codeRef);
+  if (!snap.exists()) throw new Error('Invalid or expired code');
+
+  const { ownerId, ownerName } = snap.data();
+
+  // 2) Create supporter record under the owner
+  const supRef = doc(collection(db, 'owners', ownerId, 'supporters'));
+  await setDoc(supRef, {
+    supporterUid: crypto.randomUUID(),              // MVP id (no login yet)
+    name: supporterName || 'Supporter',
+    status: 'Active',
+    createdAt: serverTimestamp()
+  });
+
+  // 3) Return for UI
+  return { ownerId, ownerName };
 }
 
 // Write a support event (NUDGE, CHEER, NUDGE_REQUEST…)

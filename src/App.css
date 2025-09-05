@@ -679,3 +679,21 @@ select {
   font-size: 0.9rem;
   border-radius: 6px;
 }
+
+/* Support panel styled like your cards */
+.support-panel {
+  display: block;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.support-panel > summary {
+  list-style: none;
+  outline: none;
+}
+
+.support-panel > summary::-webkit-details-marker {
+  display: none;
+}

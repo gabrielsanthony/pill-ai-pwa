@@ -9,6 +9,10 @@ import { NUDGE_MS } from './notifications/nudgeCopy';
 import { scheduleReminder, cancelReminder } from './notifications/api';
 import { getMessaging, onMessage } from 'firebase/messaging';
 import CheerSquad from './CheerSquad.jsx';
+import { completeJoin } from './utils/firebase-db';
+import SupportDashboard from './SupportDashboard.jsx';
+
+
 
 
 // 🚨 Overdue bookkeeping
@@ -46,6 +50,14 @@ function App() {
     const [isCourseComplete, setIsCourseComplete] = useState(false);
     const [isListening, setIsListening] = useState(false);
     const [activeTab, setActiveTab] = useState('ask'); // Options: ask, track, voice, about
+
+    const [role, setRole] = useState(localStorage.getItem('role') || 'medTaker'); // 'medTaker' | 'supporter'
+const [ownerId, setOwnerId] = useState(localStorage.getItem('ownerId') || null);
+const [ownerName, setOwnerName] = useState(localStorage.getItem('ownerName') || '');
+
+// add this NEW line:
+const [isSupporter, setIsSupporter] = useState(localStorage.getItem('isSupporter') === '1');
+
 
     const [slideDir, setSlideDir] = useState('right'); // 'left' or 'right'
 
@@ -98,6 +110,37 @@ useEffect(() => {
     onMessageUnsubRef.current = null;
   };
 }, []);
+
+useEffect(() => {
+  (async () => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('join');
+      if (!code) return;
+
+      const supporterName = prompt('Your name (for your friend to see):', 'Alex') || 'Supporter';
+      localStorage.setItem('supporterName', supporterName);
+
+      const { ownerId: oid, ownerName: oname } = await completeJoin(code, supporterName);
+
+      // Persist supporter capability (no nav changes)
+      localStorage.setItem('isSupporter', '1');
+      localStorage.setItem('ownerId', oid);
+      localStorage.setItem('ownerName', oname);
+
+      setIsSupporter(true);
+      setOwnerId(oid);
+      setOwnerName(oname);
+
+      // Clean URL
+      window.history.replaceState({}, '', window.location.origin + window.location.pathname);
+    } catch (e) {
+      console.error('Join failed:', e);
+      alert('This invite link is invalid or expired.');
+    }
+  })();
+}, []);
+
 
 const goToTab = (newTab, dir) => {
   if (dir) {
@@ -674,6 +717,8 @@ useEffect(() => {
   return () => document.removeEventListener('visibilitychange', onVis);
 }, []);
 
+
+
     const content = {
         English: {
             privacy: "Pill-AI does not collect or store any personal data. All interactions are processed anonymously. Please consult a healthcare professional for any medical concerns.",
@@ -1239,6 +1284,18 @@ try {
                 </div>
                 {/* 👥 Cheer Squad section (MVP UI only) */}
                 <CheerSquad />
+
+                {/* 🤝 I'm Cheering (visible only if user accepted an invite) */}
+{isSupporter && ownerId && (
+  <details className="support-panel" open style={{ marginTop: 16 }}>
+    <summary style={{ fontWeight: 700, cursor: 'pointer' }}>
+      🤝 I’m Cheering {ownerName}
+    </summary>
+    <div style={{ marginTop: 8 }}>
+      <SupportDashboard />
+    </div>
+  </details>
+)}
                 
                 {isCourseComplete && (
                     <div className="progress-section">
