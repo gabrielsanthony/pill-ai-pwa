@@ -1,24 +1,13 @@
-// src/utils/firebase-db.js
-import { getApps, getApp, initializeApp } from 'firebase/app';
+// Reuse already-initialized Firebase from your config file:
+import { db, auth } from '../firebase-config';
 import {
-  getFirestore,
   doc, setDoc, addDoc, collection,
   serverTimestamp, getDocs, query, orderBy, where, limit
 } from 'firebase/firestore';
-import { getAuth, signInAnonymously } from 'firebase/auth';
 
-// Reuse your existing config file name:
-import firebaseConfig from '../firebase-config';
-
-// --- init once (reuses existing app if already initialized elsewhere) ---
-const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-const db  = getFirestore(app);
-const auth = getAuth(app);
-
-// Ensure we have an anonymous user (MVP—no login UI)
+// Ensure we have an anonymous user (your firebase-config already signs in)
 export async function ensureAnonAuth() {
-  if (!auth.currentUser) await signInAnonymously(auth);
-  return auth.currentUser; // { uid }
+  return auth.currentUser; // { uid } or null briefly at startup
 }
 
 // Create a short join link for a supporter
