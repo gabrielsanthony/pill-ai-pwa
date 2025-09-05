@@ -18,6 +18,9 @@ export default function CheerSquad() {
   // 🆕 Support feed for incoming cheers/nudges (MVP local state)
 const [feed, setFeed] = useState([]); // [{id, supporterName, type, message, ts}]
 
+  const [ownerId] = useState(localStorage.getItem('ownerId') || 'owner_demo_1'); // fallback for now
+const [inviteLink, setInviteLink] = useState('');
+
 useEffect(() => {
   if (!ownerId) return;
   const unsub = listenSupportEvents(ownerId, (rows) => {
@@ -34,9 +37,6 @@ useEffect(() => {
   const [phone, setPhone] = useState("+64"); // NZ default
   const [consent, setConsent] = useState(false);
   const [error, setError] = useState("");
-
-  const [ownerId] = useState(localStorage.getItem('ownerId') || 'owner_demo_1'); // fallback for now
-const [inviteLink, setInviteLink] = useState('');
 
   const resetForm = () => {
     setName("");

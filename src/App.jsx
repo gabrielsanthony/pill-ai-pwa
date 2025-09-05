@@ -291,14 +291,6 @@ await scheduleReminder({
   token, title, body, sendAt, tag: `dose:${mainISO}:od1`,
 });
 
-if (ownerId) {
-  await addSupportEvent(ownerId, {
-    type: 'NUDGE_REQUEST',
-    doseTimeISO: mainISO,
-    message: `Dose overdue: ${reminderDrug || 'med'} scheduled ${new Date(mainISO).toLocaleTimeString()}`
-  });
-}
-
 // 🆕 also notify supporters (MVP)
 try {
   if (ownerId) {
