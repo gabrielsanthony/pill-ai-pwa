@@ -11,7 +11,7 @@ import { getMessaging, onMessage } from 'firebase/messaging';
 import CheerSquad from './CheerSquad.jsx';
 import { completeJoin, addSupportEvent } from './utils/firebase-db';
 import SupportDashboard from './SupportDashboard.jsx';
-
+import Modal from './components/Modal.jsx';
 
 // 🚨 Overdue bookkeeping
 const getOverdueMap = () => {
@@ -47,21 +47,17 @@ function App() {
     const [dailyTimes, setDailyTimes] = useState(['']);
     const [isCourseComplete, setIsCourseComplete] = useState(false);
     const [isListening, setIsListening] = useState(false);
-const [activeTab, setActiveTab] = useState('ask'); // Options: ask, track, voice, learn, earn, support
-
+    const [activeTab, setActiveTab] = useState('ask'); // Options: ask, track, voice, learn, earn, support
     const [role, setRole] = useState(localStorage.getItem('role') || 'medTaker'); // 'medTaker' | 'supporter'
-const [ownerId, setOwnerId] = useState(localStorage.getItem('ownerId') || null);
-const [ownerName, setOwnerName] = useState(localStorage.getItem('ownerName') || '');
-
+    const [ownerId, setOwnerId] = useState(localStorage.getItem('ownerId') || null);
+    const [ownerName, setOwnerName] = useState(localStorage.getItem('ownerName') || '');
 // add this NEW line:
-const [isSupporter, setIsSupporter] = useState(localStorage.getItem('isSupporter') === '1');
-
-
+    const [isSupporter, setIsSupporter] = useState(localStorage.getItem('isSupporter') === '1');
     const [slideDir, setSlideDir] = useState('right'); // 'left' or 'right'
-
     // 🔔 In‑app toast state
     const [toast, setToast] = useState(null);           // { title, body } or null
     const [toastVisible, setToastVisible] = useState(false);
+    const [openModal, setOpenModal] = useState(null); // 'instructions' | 'privacy' | 'faq' | null
     const toastTimerRef = useRef(null);
     // Guards so we attach each foreground listener exactly once
         const swListenerAttachedRef = useRef(false);
@@ -1402,6 +1398,52 @@ try {
 
  </div> {/* closes swipe-wrapper */}
         </div> {/* closes card-viewport */}
+        {/* === Footer: modal links === */}
+<footer className="app-footer">
+  <button onClick={() => setOpenModal('instructions')}>Instructions</button>
+  <span className="sep">·</span>
+  <button onClick={() => setOpenModal('privacy')}>Privacy Policy</button>
+  <span className="sep">·</span>
+  <button onClick={() => setOpenModal('faq')}>FAQ</button>
+</footer>
+
+{/* === Modals === */}
+<Modal
+  open={openModal === 'instructions'}
+  onClose={() => setOpenModal(null)}
+  title="How to use Pill-AI"
+>
+  <ol style={{ lineHeight: 1.55 }}>
+    <li>💬 Ask medicine questions in Chat.</li>
+    <li>💊 Use Track to set reminders and mark doses.</li>
+    <li>🤝 Use Support to invite your Cheer Squad.</li>
+    <li>📘 Learn and 🏆 Earn with quizzes.</li>
+  </ol>
+</Modal>
+
+<Modal
+  open={openModal === 'privacy'}
+  onClose={() => setOpenModal(null)}
+  title="Privacy Policy"
+>
+  <p>{content[language]?.privacy || content["English"].privacy}</p>
+</Modal>
+
+<Modal
+  open={openModal === 'faq'}
+  onClose={() => setOpenModal(null)}
+  title="Frequently Asked Questions"
+>
+  <ul style={{ lineHeight: 1.55, paddingLeft: 18 }}>
+    {content[language].faq.map((item, idx) => (
+      <li key={idx} style={{ marginBottom: 10 }}>
+        <strong>Q:</strong> {item.q}<br />
+        <strong>A:</strong> {item.a}
+      </li>
+    ))}
+  </ul>
+</Modal>
+
       </div> {/* closes app-container */}
     </div>
     );
