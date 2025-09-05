@@ -189,15 +189,18 @@ input[type="text"], select {
   flex-wrap: wrap;
   padding: 0 12px;
   }
+
   .logo {
     width: 160px;
     margin-bottom: 0.5rem;
   }
+
   .language-selector {
     width: auto;
     align-items: flex-end;
     margin-left: auto;
   }
+
 .language-selector select {
   width: auto;
   font-size: 0.9rem;
@@ -359,6 +362,13 @@ select {
   margin: 0;
 }
 
+/* SUPPORT 🤝 card — match other cards */
+.card.support-card {
+  background-color: #ffffff;
+  color: #000000;
+  border-left: 6px solid #f58025; /* same orange accent */
+}
+
 /* ABOUT ℹ card */
 .about-card {
   background-color: #ffffff; /* soft gray */
@@ -373,6 +383,13 @@ select {
   border-bottom: 1px solid #ddd;
   padding-bottom: 0.25rem;
 }
+
+.card > h2, .card > h3 {
+  margin: 0 0 14px;
+  font-size: 20px;
+  line-height: 1.2;
+}
+
 .mic-button {
   background-color: #ff6600; /* High contrast orange */
   color: white;

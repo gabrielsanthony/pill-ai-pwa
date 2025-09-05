@@ -1377,7 +1377,7 @@ try {
 
                 {activeTab === 'support' && (
   <div className="card support-card">
-    <h3>🤝 Support • Cheer Squad</h3>
+    <h3>🤝 Support</h3>
 
     {/* Invite + manage your own Cheer Squad */}
     <CheerSquad />
