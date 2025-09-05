@@ -47,7 +47,7 @@ function App() {
     const [dailyTimes, setDailyTimes] = useState(['']);
     const [isCourseComplete, setIsCourseComplete] = useState(false);
     const [isListening, setIsListening] = useState(false);
-    const [activeTab, setActiveTab] = useState('ask'); // Options: ask, track, voice, about
+const [activeTab, setActiveTab] = useState('ask'); // Options: ask, track, voice, learn, earn, support
 
     const [role, setRole] = useState(localStorage.getItem('role') || 'medTaker'); // 'medTaker' | 'supporter'
 const [ownerId, setOwnerId] = useState(localStorage.getItem('ownerId') || null);
@@ -157,7 +157,7 @@ const goToTab = (newTab, dir) => {
 };
 
 
-    const tabOrder = ['ask', 'track', 'voice', 'learn', 'earn', 'about'];
+    const tabOrder = ['ask', 'track', 'voice', 'learn', 'earn', 'support'];
     // 👇 add these helpers right after tabOrder
     const nextTabOf = (cur) => {
     const i = tabOrder.indexOf(cur);
@@ -879,7 +879,7 @@ const nextDoseMs = nextDoseTime
                         <button className={activeTab === 'voice' ? 'tab active' : 'tab'} onClick={() => goToTab('voice')}>🎙️ Voice</button>
                         <button className={activeTab === 'learn' ? 'tab active' : 'tab'} onClick={() => goToTab('learn')}>📘 Learn</button>
                         <button className={activeTab === 'earn' ? 'tab active' : 'tab'} onClick={() => goToTab('earn')}>🏆 Earn</button>
-                        <button className={activeTab === 'about' ? 'tab active' : 'tab'} onClick={() => goToTab('about')}>ℹ️ About</button>
+                        <button className={activeTab === 'support' ? 'tab active' : 'tab'} onClick={() => goToTab('support')}>🤝 Support</button>
                 </div>
             
             <div className="card-viewport">
@@ -1322,20 +1322,7 @@ try {
 
                     )}
                 </div>
-                {/* 👥 Cheer Squad section (MVP UI only) */}
-                <CheerSquad />
-
-                {/* 🤝 I'm Cheering (visible only if user accepted an invite) */}
-{isSupporter && ownerId && (
-  <details className="support-panel" open style={{ marginTop: 16 }}>
-    <summary style={{ fontWeight: 700, cursor: 'pointer' }}>
-      🤝 I’m Cheering {ownerName}
-    </summary>
-    <div style={{ marginTop: 8 }}>
-      <SupportDashboard />
-    </div>
-  </details>
-)}
+               
                 
                 {isCourseComplete && (
                     <div className="progress-section">
@@ -1392,47 +1379,26 @@ try {
 
                 {activeTab === 'earn' && <EarnCard />}
 
-                {activeTab === 'about' && (
-                <div className="card about-card">
-                    <h3>ℹ️ About Pill-AI</h3>
-                    <details>
-                        <summary>🧪 Instructions – Click to expand</summary>
-                        <ol>
-                            <li>💬 Type a medicine-related question in the box at the top of the page.</li>
-                            <li>💡 Press <strong>Enter</strong> or click <strong>Send</strong> to get an answer from Pill-AI.</li>
-                            <li>🌐 To change the app’s language, use the <strong>Language</strong> dropdown in the top-right corner.</li>
-                            <li>⏰ If the answer includes medicine info, click <strong>➕ Set Med Reminder</strong> to schedule reminders.</li>
-                            <li>📅 Choose how many times a day you take your medicine, and for how many days. Then click <strong>Save Reminder</strong>.</li>
-                            <li>🔔 Pill-AI will notify you when it’s time to take your medication.</li>
-                            <li>✅ When you take your dose, click the <strong>Meds Taken</strong> button. You’ll only see it when a dose is due (within 30 mins).</li>
-                            <li>📈 Watch your progress bar increase as you stay on track!</li>
-                            <li>🔁 You can reset or cancel reminders at any time using the red buttons below the tracker.</li>
-                        </ol>
-                    </details>
+                {activeTab === 'support' && (
+  <div className="card support-card">
+    <h3>🤝 Support • Cheer Squad</h3>
 
-                    <hr style={{ margin: "1.5rem 0", border: "none", borderTop: "1px solid #ddd" }} />
+    {/* Invite + manage your own Cheer Squad */}
+    <CheerSquad />
 
-                    <details>
-                        <summary>🔒 Privacy Policy – Click to expand</summary>
-                        <p>{content[language]?.privacy || content["English"].privacy}</p>
-                    </details>
-
-                    <hr style={{ margin: "1.5rem 0", border: "none", borderTop: "1px solid #ddd" }} />
-
-                    <details>
-                        <summary>❓ FAQ – Click to expand</summary>
-                        <ul>
-                            {content[language].faq.map((item, idx) => (
-                                <li key={idx}>
-                                    <strong>Q:</strong> {item.q}
-                                    <br />
-                                    <strong>A:</strong> {item.a}
-                                </li>
-                            ))}
-                        </ul>
-                    </details>
-                </div>
-                )}
+    {/* If this user arrived via a join link, show the supporter dashboard */}
+    {isSupporter && ownerId && (
+      <details className="support-panel" open style={{ marginTop: 16 }}>
+        <summary style={{ fontWeight: 700, cursor: 'pointer' }}>
+          🤝 I’m Cheering {ownerName}
+        </summary>
+        <div style={{ marginTop: 8 }}>
+          <SupportDashboard />
+        </div>
+      </details>
+    )}
+  </div>
+)}
 
  </div> {/* closes swipe-wrapper */}
         </div> {/* closes card-viewport */}
