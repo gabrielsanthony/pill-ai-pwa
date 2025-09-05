@@ -1,7 +1,8 @@
 // src/CheerSquad.jsx
-import React, { useState } from "react";
-import { createJoinLink, ensureAnonAuth } from './utils/firebase-db';
+import { createJoinLink, ensureAnonAuth, listenSupportEvents } from './utils/firebase-db';
+import React, { useState, useEffect } from "react"; // ensure useEffect is imported
 
+const SHOW_DEV_BUTTONS = false;
 
 /* --- helpers --- */
 const maskPhone = (e164 = "") =>
@@ -16,6 +17,17 @@ export default function CheerSquad() {
 
   // 🆕 Support feed for incoming cheers/nudges (MVP local state)
 const [feed, setFeed] = useState([]); // [{id, supporterName, type, message, ts}]
+
+useEffect(() => {
+  if (!ownerId) return;
+  const unsub = listenSupportEvents(ownerId, (rows) => {
+    // show only supporter-to-Mia messages in her feed
+    const visible = rows.filter(r => r.type === 'CHEER' || r.type === 'NUDGE' || r.type === 'CHECKED');
+    setFeed(visible);
+  });
+  return () => unsub?.();
+}, [ownerId]);
+
 
   // modal form state
   const [name, setName] = useState("");
@@ -161,6 +173,8 @@ async function simulateEvent({
   </div>
 )}
 
+{SHOW_DEV_BUTTONS && (
+  <>
       {/* ---- DEMO: Streak Cheer button ---- */}
 <div style={{ marginTop: 12 }}>
   <button
@@ -205,6 +219,8 @@ async function simulateEvent({
 >
   👍 Mark Checked-in
 </button>
+  </>
+)}
 
 {/* ---- Support Feed ---- */}
 <div style={{ marginTop: 16 }}>

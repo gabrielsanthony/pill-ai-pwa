@@ -9,10 +9,8 @@ import { NUDGE_MS } from './notifications/nudgeCopy';
 import { scheduleReminder, cancelReminder } from './notifications/api';
 import { getMessaging, onMessage } from 'firebase/messaging';
 import CheerSquad from './CheerSquad.jsx';
-import { completeJoin } from './utils/firebase-db';
+import { completeJoin, addSupportEvent } from './utils/firebase-db';
 import SupportDashboard from './SupportDashboard.jsx';
-
-
 
 
 // 🚨 Overdue bookkeeping
@@ -289,12 +287,34 @@ async function checkAndHandleOverdueDoses() {
       const title = `⏰ Overdue: ${reminderDrug || 'Your medication'}`;
       const body  = `You missed your scheduled dose. Tap to mark taken or get back on track.`;
 
-      await scheduleReminder({
-          token, title, body, sendAt, tag: `dose:${mainISO}:od1`,
-      });
+await scheduleReminder({
+  token, title, body, sendAt, tag: `dose:${mainISO}:od1`,
+});
 
-      // Mark this dose as alerted so we don't duplicate
-      overdueMap[mainISO] = true;
+if (ownerId) {
+  await addSupportEvent(ownerId, {
+    type: 'NUDGE_REQUEST',
+    doseTimeISO: mainISO,
+    message: `Dose overdue: ${reminderDrug || 'med'} scheduled ${new Date(mainISO).toLocaleTimeString()}`
+  });
+}
+
+// 🆕 also notify supporters (MVP)
+try {
+  if (ownerId) {
+    await addSupportEvent(ownerId, {
+      type: 'NUDGE_REQUEST',
+      doseTimeISO: mainISO,
+      message: `Dose overdue: ${reminderDrug || 'med'} scheduled ${new Date(mainISO).toLocaleTimeString()}`
+    });
+  }
+} catch (e) {
+  console.warn('NUDGE_REQUEST write failed:', e);
+}
+
+// Mark this dose as alerted so we don't duplicate
+overdueMap[mainISO] = true;
+
     } catch (err) {
       console.error('❌ Failed to schedule overdue notification for', mainISO, err);
     }
@@ -430,6 +450,34 @@ async function submitQuestionStreaming(e) {
             }
         }
     }, []);
+
+    // 🎯 Send CHEER_REQUEST at progress milestones
+// Normal: 25/50/75/100%
+// Fast mode: add ?fast=1 to URL → 10/20/30/40% for demo
+useEffect(() => {
+  if (!ownerId) return;
+
+  const total = (durationDays || 0) * (timesPerDay || 0);
+  if (!total) return;
+
+  // Option B: URL switch to accelerate milestones for demo
+  const params = new URLSearchParams(window.location.search);
+  const FAST = params.has('fast'); // e.g. https://yourapp.vercel.app/?fast=1
+  const MILESTONES = FAST ? [10, 20, 30, 40] : [25, 50, 75, 100];
+
+  const progress = Math.floor((medsTaken / total) * 100);
+  const last = Number(localStorage.getItem('lastCheerMilestone') || 0);
+  const nextMilestone = MILESTONES.find(m => progress >= m && m > last);
+  if (!nextMilestone) return;
+
+  addSupportEvent(ownerId, {
+    type: 'CHEER_REQUEST',
+    milestone: nextMilestone,
+    message: `Reached ${nextMilestone}% of the course for ${reminderDrug || 'your meds'}.`
+  }).catch(err => console.error('CHEER_REQUEST write failed:', err));
+
+  localStorage.setItem('lastCheerMilestone', String(nextMilestone));
+}, [medsTaken, durationDays, timesPerDay, ownerId, reminderDrug]);
 
     useEffect(() => {
         const reminder = JSON.parse(localStorage.getItem("activeReminder"));

@@ -2,7 +2,9 @@
 import { db, auth } from '../firebase-config';
 import {
   doc, setDoc, addDoc, collection,
-  serverTimestamp, getDocs, query, orderBy, where, limit
+  serverTimestamp, getDocs, getDoc,   // ← moved getDoc up here
+  query, orderBy, where, limit,
+  onSnapshot                          // ← add this
 } from 'firebase/firestore';
 
 // Ensure we have an anonymous user (your firebase-config already signs in)
@@ -21,8 +23,6 @@ export async function createJoinLink(ownerId, ownerName) {
   const url = `${window.location.origin}/?join=${code}`;
   return { code, url };
 }
-
-import { getDoc } from 'firebase/firestore'; // ← make sure this import exists at top
 
 export async function completeJoin(code, supporterName) {
   // 1) Look up the join code
@@ -61,4 +61,23 @@ export async function getRecentSupportEvents(ownerId) {
   );
   const snap = await getDocs(q);
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+// Live listener for support events (owner = med-taker)
+export function listenSupportEvents(ownerId, cb, { onlyTypes = null } = {}) {
+  if (!ownerId) return () => {};
+  const col = collection(db, 'owners', ownerId, 'supportEvents');
+  const q = query(col, orderBy('ts', 'desc'));
+
+  return onSnapshot(q, (snap) => {
+    let rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    // Optional client-side filter (Firestore can't OR multiple equality easily here)
+    if (onlyTypes && Array.isArray(onlyTypes) && onlyTypes.length) {
+      rows = rows.filter(r => onlyTypes.includes(r.type));
+    }
+    cb(rows);
+  }, (err) => {
+    console.error('listenSupportEvents error:', err);
+    cb([]); // be graceful
+  });
 }
