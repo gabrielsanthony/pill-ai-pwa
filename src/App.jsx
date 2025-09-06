@@ -71,20 +71,24 @@ function App() {
 
      // === modal helpers (must be inside App so they can access setOpenModal) ===
 function openModalAndSetHash(kind) {
-  // kind: 'instructions' | 'privacy' | 'faq'
   setOpenModal(kind);
   const map = { instructions: 'howto', privacy: 'privacy', faq: 'faq' };
   const hash = map[kind] || '';
-  if (hash) history.pushState({}, '', `#${hash}`);
+  if (hash) {
+    // setting location.hash guarantees a 'hashchange' event
+    location.hash = hash;
+  }
 }
 
 function closeModalAndClearHash() {
   setOpenModal(null);
-  // If there’s a hash, pop it off (preserve scroll)
   if (location.hash) {
-    history.pushState({}, '', location.pathname + location.search);
+    // clear the fragment without a full reload
+    history.replaceState({}, '', location.pathname + location.search);
+    // ensure effect runs once more and leaves modal closed
+    setTimeout(() => setOpenModal(null), 0);
   }
-}   
+}
 
     // Helper to show a toast for a few seconds
     const TOAST_HIDE_MS = 6000;
@@ -168,10 +172,19 @@ useEffect(() => {
     else setOpenModal(null);
   };
 
+  // run once for direct loads like /#howto
   applyFromHash();
+
+  // listen to BOTH events
+  window.addEventListener('hashchange', applyFromHash);
   window.addEventListener('popstate', applyFromHash);
-  return () => window.removeEventListener('popstate', applyFromHash);
+
+  return () => {
+    window.removeEventListener('hashchange', applyFromHash);
+    window.removeEventListener('popstate', applyFromHash);
+  };
 }, []);
+
 
 useEffect(() => {
   const onKey = (e) => {
