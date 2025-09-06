@@ -1,22 +1,24 @@
+// src/components/Modal.jsx
 import React, { useEffect, useRef } from 'react';
 
 export default function Modal({ open, onClose, title, children }) {
   const closeBtnRef = useRef(null);
   const prevFocusRef = useRef(null);
 
-  if (!open) return null;
-
+  // ✅ Hooks must run on every render. Guard the effect body with `if (!open) return;`
   useEffect(() => {
+    if (!open) return;
+
     // lock background scroll
     document.body.classList.add('modal-open');
 
     // remember previously focused element and move focus into the modal
     prevFocusRef.current = document.activeElement;
-    // focus close button after paint
     const id = requestAnimationFrame(() => closeBtnRef.current?.focus());
 
     const onKey = (e) => {
       if (e.key === 'Escape') onClose?.();
+
       // simple focus trap (Tab cycles inside modal)
       if (e.key === 'Tab') {
         const root = document.getElementById('pillai-modal-root');
@@ -39,14 +41,18 @@ export default function Modal({ open, onClose, title, children }) {
     };
 
     window.addEventListener('keydown', onKey);
+
     return () => {
       window.removeEventListener('keydown', onKey);
       document.body.classList.remove('modal-open');
       cancelAnimationFrame(id);
-      // restore focus
+      // restore focus to previously focused element
       prevFocusRef.current && prevFocusRef.current.focus?.();
     };
-  }, [onClose]);
+  }, [open, onClose]);
+
+  // Render nothing when closed
+  if (!open) return null;
 
   const stop = (e) => e.stopPropagation();
 
