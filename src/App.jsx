@@ -69,6 +69,22 @@ function App() {
         const chatAbortRef = useRef(null); // aborts an in-flight chat stream
         const answerBoxRef = useRef(null);
 
+     // === modal helpers (must be inside App so they can access setOpenModal) ===
+function openModalAndSetHash(kind) {
+  // kind: 'instructions' | 'privacy' | 'faq'
+  setOpenModal(kind);
+  const map = { instructions: 'howto', privacy: 'privacy', faq: 'faq' };
+  const hash = map[kind] || '';
+  if (hash) history.pushState({}, '', `#${hash}`);
+}
+
+function closeModalAndClearHash() {
+  setOpenModal(null);
+  // If there’s a hash, pop it off (preserve scroll)
+  if (location.hash) {
+    history.pushState({}, '', location.pathname + location.search);
+  }
+}   
 
     // Helper to show a toast for a few seconds
     const TOAST_HIDE_MS = 6000;
@@ -1433,8 +1449,9 @@ try {
 
 <footer className="app-footer">
   <button
+    type="button"                                 // 👈 prevent implicit submit
     className="footer-btn"
-    onClick={() => openModalAndSetHash('instructions')} // ← was setOpenModal('instructions')
+    onClick={() => openModalAndSetHash('instructions')}
     aria-label="How to use Pill-AI"
     title="How to use Pill-AI"
   >
@@ -1442,8 +1459,9 @@ try {
   </button>
 
   <button
+    type="button"                                 // 👈 prevent implicit submit
     className="footer-btn"
-    onClick={() => openModalAndSetHash('privacy')}      // ← was setOpenModal('privacy')
+    onClick={() => openModalAndSetHash('privacy')}
     aria-label="Privacy policy"
     title="Privacy policy"
   >
@@ -1451,8 +1469,9 @@ try {
   </button>
 
   <button
+    type="button"                                 // 👈 prevent implicit submit
     className="footer-btn"
-    onClick={() => openModalAndSetHash('faq')}          // ← was setOpenModal('faq')
+    onClick={() => openModalAndSetHash('faq')}
     aria-label="Frequently Asked Questions"
     title="Frequently Asked Questions"
   >

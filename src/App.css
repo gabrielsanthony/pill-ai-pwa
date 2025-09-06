@@ -5,6 +5,9 @@ body {
   color: #333;
 }
 
+body.modal-open { overflow: hidden; }
+
+
 /* Prevent width+padding from overflowing and kill horizontal scrollbars */
 *, *::before, *::after { box-sizing: border-box; }
 html, body { max-width: 100%; overflow-x: hidden; }
@@ -720,8 +723,11 @@ select {
   position: fixed; inset: 0;
   background: rgba(0,0,0,0.35);
   display: flex; align-items: center; justify-content: center;
-  z-index: 1000;
+  z-index: 12000;
 }
+
+.modal { z-index: 12001; }
+
 .modal {
   width: min(800px, 92vw);
   max-height: 84vh;
