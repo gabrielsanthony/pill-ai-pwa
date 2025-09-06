@@ -738,13 +738,80 @@ select {
   font-size: 22px; line-height: 1; border: none; background: transparent; cursor: pointer;
 }
 
-/* --- footer links --- */
+/* --- footer (buttons) --- */
 .app-footer {
+  position: sticky;         /* stays visible near the bottom */
+  bottom: 0;
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+  padding: 12px;
   margin: 24px 0 40px;
-  text-align: center; font-size: 14px; color: #666;
+  background: #fff;
+  border-top: 1px solid #eee;
+  z-index: 5;
 }
-.app-footer button {
-  border: none; background: none; cursor: pointer; text-decoration: underline;
-  padding: 0 6px; font: inherit; color: #2c7a7b;
+
+.app-footer .footer-btn {
+  appearance: none;
+  border: 1px solid #e6e6e6;
+  background: #f8f8f8;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 80ms ease, background 120ms ease, box-shadow 120ms ease;
+  color: #222;
 }
-.app-footer span.sep { color: #bbb; padding: 0 2px; }
+
+.app-footer .footer-btn:hover {
+  background: #f1f1f1;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.app-footer .footer-btn:active {
+  transform: translateY(1px);
+}
+
+/* optional: nicer on very small screens */
+@media (max-width: 520px) {
+  .app-footer {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px 8px;
+  }
+}
+
+.howto details {
+  border: 1px solid #e6e6e6;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 10px 0;
+  background: #fff;
+}
+.howto summary {
+  cursor: pointer;
+  font-weight: 600;
+  list-style: none;
+}
+.howto summary::-webkit-details-marker { display: none; }
+.howto ol, .howto ul { margin: 8px 0 0 18px; }
+.howto li { margin: 6px 0; }
+
+/* FAQ sections styled like How-to/Privacy */
+.faq details {
+  border: 1px solid #e6e6e6;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 10px 0;
+  background: #fff;
+}
+.faq summary {
+  cursor: pointer;
+  font-weight: 600;
+  list-style: none;
+}
+.faq summary::-webkit-details-marker { display: none; }
+.faq ol, .faq ul { margin: 8px 0 0 18px; }
+.faq li { margin: 6px 0; }

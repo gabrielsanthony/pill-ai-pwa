@@ -12,6 +12,10 @@ import CheerSquad from './CheerSquad.jsx';
 import { completeJoin, addSupportEvent } from './utils/firebase-db';
 import Modal from './components/Modal.jsx';
 import CheeringHub from './CheeringHub.jsx';
+import HowToPillAI from './components/HowToPillAI.jsx';
+import PrivacyPolicy from './components/PrivacyPolicy.jsx';
+import FAQ from './components/FAQ.jsx';
+
 
 // 🚨 Overdue bookkeeping
 const getOverdueMap = () => {
@@ -139,6 +143,38 @@ localStorage.setItem('cheeringMemberships', JSON.stringify(list));
   })();
 }, []);
 
+useEffect(() => {
+  const applyFromHash = () => {
+    const h = (location.hash || '').slice(1);
+    if (h === 'howto') setOpenModal('instructions');
+    else if (h === 'privacy') setOpenModal('privacy');
+    else if (h === 'faq') setOpenModal('faq');
+    else setOpenModal(null);
+  };
+
+  applyFromHash();
+  window.addEventListener('popstate', applyFromHash);
+  return () => window.removeEventListener('popstate', applyFromHash);
+}, []);
+
+useEffect(() => {
+  const onKey = (e) => {
+    if (e.key === 'Escape') { closeModalAndClearHash(); return; }
+    // don’t trigger when typing in inputs/textareas
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+
+    const k = e.key.toLowerCase();
+    if (k === 'h') openModalAndSetHash('instructions');    // h = How-to
+    if (k === 'p') openModalAndSetHash('privacy');          // p = Privacy
+    if (e.key === '?' || (e.shiftKey && e.key === '/')) {   // ? = FAQ
+      e.preventDefault();
+      openModalAndSetHash('faq');
+    }
+  };
+  window.addEventListener('keydown', onKey);
+  return () => window.removeEventListener('keydown', onKey);
+}, []);
 
 const goToTab = (newTab, dir) => {
   if (dir) {
@@ -1394,50 +1430,52 @@ try {
  </div> {/* closes swipe-wrapper */}
         </div> {/* closes card-viewport */}
         {/* === Footer: modal links === */}
+
 <footer className="app-footer">
-  <button onClick={() => setOpenModal('instructions')}>Instructions</button>
-  <span className="sep">·</span>
-  <button onClick={() => setOpenModal('privacy')}>Privacy Policy</button>
-  <span className="sep">·</span>
-  <button onClick={() => setOpenModal('faq')}>FAQ</button>
+  <button
+    className="footer-btn"
+    onClick={() => openModalAndSetHash('instructions')} // ← was setOpenModal('instructions')
+    aria-label="How to use Pill-AI"
+    title="How to use Pill-AI"
+  >
+    📖 How-to
+  </button>
+
+  <button
+    className="footer-btn"
+    onClick={() => openModalAndSetHash('privacy')}      // ← was setOpenModal('privacy')
+    aria-label="Privacy policy"
+    title="Privacy policy"
+  >
+    🛡️ Privacy
+  </button>
+
+  <button
+    className="footer-btn"
+    onClick={() => openModalAndSetHash('faq')}          // ← was setOpenModal('faq')
+    aria-label="Frequently Asked Questions"
+    title="Frequently Asked Questions"
+  >
+    ❓ FAQ
+  </button>
 </footer>
 
 {/* === Modals === */}
-<Modal
-  open={openModal === 'instructions'}
-  onClose={() => setOpenModal(null)}
-  title="How to use Pill-AI"
->
-  <ol style={{ lineHeight: 1.55 }}>
-    <li>💬 Ask medicine questions in Chat.</li>
-    <li>💊 Use Track to set reminders and mark doses.</li>
-    <li>🤝 Use Support to invite your Cheer Squad.</li>
-    <li>📘 Learn and 🏆 Earn with quizzes.</li>
-  </ol>
-</Modal>
+<HowToPillAI
+  isOpen={openModal === 'instructions'}
+  onClose={() => closeModalAndClearHash()}
+/>
 
-<Modal
-  open={openModal === 'privacy'}
-  onClose={() => setOpenModal(null)}
-  title="Privacy Policy"
->
-  <p>{content[language]?.privacy || content["English"].privacy}</p>
-</Modal>
+<PrivacyPolicy
+  isOpen={openModal === 'privacy'}
+  onClose={() => closeModalAndClearHash()}
+  language={language}
+/>
 
-<Modal
-  open={openModal === 'faq'}
-  onClose={() => setOpenModal(null)}
-  title="Frequently Asked Questions"
->
-  <ul style={{ lineHeight: 1.55, paddingLeft: 18 }}>
-    {content[language].faq.map((item, idx) => (
-      <li key={idx} style={{ marginBottom: 10 }}>
-        <strong>Q:</strong> {item.q}<br />
-        <strong>A:</strong> {item.a}
-      </li>
-    ))}
-  </ul>
-</Modal>
+<FAQ
+  isOpen={openModal === 'faq'}
+  onClose={() => closeModalAndClearHash()}
+/>
 
       </div> {/* closes app-container */}
     </div>
