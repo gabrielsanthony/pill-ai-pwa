@@ -10,8 +10,8 @@ import { scheduleReminder, cancelReminder } from './notifications/api';
 import { getMessaging, onMessage } from 'firebase/messaging';
 import CheerSquad from './CheerSquad.jsx';
 import { completeJoin, addSupportEvent } from './utils/firebase-db';
-import SupportDashboard from './SupportDashboard.jsx';
 import Modal from './components/Modal.jsx';
+import CheeringHub from './CheeringHub.jsx';
 
 // 🚨 Overdue bookkeeping
 const getOverdueMap = () => {
@@ -116,6 +116,10 @@ useEffect(() => {
       localStorage.setItem('supporterName', supporterName);
 
       const { ownerId: oid, ownerName: oname } = await completeJoin(code, supporterName);
+
+      const list = JSON.parse(localStorage.getItem('cheeringMemberships') || '[]');
+if (!list.find(m => m.ownerId === oid)) list.push({ ownerId: oid, ownerName: oname });
+localStorage.setItem('cheeringMemberships', JSON.stringify(list));
 
       // Persist supporter capability (no nav changes)
       localStorage.setItem('isSupporter', '1');
@@ -1375,24 +1379,15 @@ try {
 
                 {activeTab === 'earn' && <EarnCard />}
 
-                {activeTab === 'support' && (
+ {activeTab === 'support' && (
   <div className="card support-card">
     <h3>🤝 Support</h3>
 
     {/* Invite + manage your own Cheer Squad */}
     <CheerSquad />
 
-    {/* If this user arrived via a join link, show the supporter dashboard */}
-    {isSupporter && ownerId && (
-      <details className="support-panel" open style={{ marginTop: 16 }}>
-        <summary style={{ fontWeight: 700, cursor: 'pointer' }}>
-          🤝 I’m Cheering {ownerName}
-        </summary>
-        <div style={{ marginTop: 8 }}>
-          <SupportDashboard />
-        </div>
-      </details>
-    )}
+    {/* Master–detail list of people you're cheering */}
+    <CheeringHub />
   </div>
 )}
 
