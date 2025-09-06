@@ -71,7 +71,7 @@ export default function PrivacyPolicy({ isOpen, onClose, language }) {
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={L.title}>
+    <Modal open={isOpen} onClose={onClose} title={L.title}>
       <div className="policy">
         <p style={{ marginTop: 0 }}>{L.quick}</p>
 

@@ -4,7 +4,7 @@ import Modal from "./Modal.jsx";
 
 export default function HowToPillAI({ isOpen, onClose }) {
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="How to use Pill-AI">
+    <Modal open={isOpen} onClose={onClose} title="How to use Pill-AI">
       <div className="howto">
         {/* QUICK START */}
         <details open>

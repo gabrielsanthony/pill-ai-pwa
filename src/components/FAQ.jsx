@@ -168,7 +168,7 @@ export default function FAQ({ isOpen, onClose, language = "English" }) {
   ];
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Frequently Asked Questions">
+    <Modal open={isOpen} onClose={onClose} title="Frequently Asked Questions">
       <div className="faq">
         {Q.map(({ q, a }, i) => (
           <details key={i} open={i < 2 /* open first two by default */}>
