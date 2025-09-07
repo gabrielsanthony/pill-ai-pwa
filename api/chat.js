@@ -145,9 +145,8 @@ if (question.length < 3) {
     return wantStream ? endStream(res, 'Please send a valid question') : res.status(400).json({ error: 'Please send a valid question' });
   }
 
-// Only enforce the English keyword guard for likely-English input
-const looksAscii = /^[\x00-\x7F]+$/.test(question);
-if (looksAscii && !isMedicineQuestion(question)) {
+// Enforce the English keyword guard ONLY when the UI language is English
+if (targetLanguage === 'English' && !isMedicineQuestion(question)) {
   const refusal =
     "Pill-AI only answers medicine questions using NZ Medsafe Consumer Medicine Information.\n" +
     "Try asking things like:\n" +
@@ -157,7 +156,6 @@ if (looksAscii && !isMedicineQuestion(question)) {
     "• “What should I do if I miss a dose of metformin?”";
   return wantStream ? endStream(res, refusal) : sendAnswer(res, refusal);
 }
-
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 60_000);
 
@@ -355,11 +353,14 @@ for (const frame of frames) {
     const answer = assistantTexts.length ? assistantTexts[assistantTexts.length - 1].trim() : '';
     const REFUSAL = 'Sorry — Pill-AI only answers questions about medicines using Medsafe Consumer Medicine Information.';
 
-    if (answer) {
-      if (!looksMedicineAnswer(answer)) return sendAnswer(res, REFUSAL);
-      const cleaned = tidyStyle(stripInlineCitations(answer));
-      return sendAnswer(res, cleaned);
-    }
+if (answer) {
+  // Only validate content with English keywords when answering in English
+  if (targetLanguage === 'English' && !looksMedicineAnswer(answer)) {
+    return sendAnswer(res, REFUSAL);
+  }
+  const cleaned = tidyStyle(stripInlineCitations(answer));
+  return sendAnswer(res, cleaned);
+}
 
     return sendAnswer(res, '⚠️ No response received.');
   } catch (err) {

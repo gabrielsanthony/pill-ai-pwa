@@ -88,6 +88,8 @@ const labels = {
     askPlaceholder: '💡 Ask a medication related question',
     send: 'Send',
     stop: 'Stop',
+    listening: 'Listening…',   // ← add
+    thinking: 'Thinking…',     // ← add
     tapToAsk: 'Tap to Ask',
     setReminder: '➕ Set Med Reminder',
     trackYourMedication: '📈 Track Your Medication',
@@ -114,7 +116,9 @@ const labels = {
     medicinesChat: 'KŌRERORERO RONGOĀ',
     askPlaceholder: '💡 Pātai mō ngā rongoā',
     send: 'Tukua',
-    stop: 'Katia',
+   stop: 'Katia',
+    listening: 'E whakarongo ana…',  // ← add
+    thinking: 'E whakaaro ana…',     // ← add
     tapToAsk: 'Pāwhiritia kia pātai',
     setReminder: '➕ Tautuhia he Whakamaumahara',
     trackYourMedication: '📈 Aroturuki i ō Rongoā',
@@ -141,7 +145,9 @@ const labels = {
     medicinesChat: 'TALANOAGA O VAILAʻAU',
     askPlaceholder: '💡 Fesili e uiga i vailaʻau',
     send: 'Auina',
-    stop: 'Taofi',
+stop: 'Taofi',
+    listening: 'Fa‘alogo…',         // ← add
+    thinking: 'O lo‘o mafaufau…',    // ← add
     tapToAsk: 'Kiliki e fesili',
     setReminder: '➕ Seti Manatua',
     trackYourMedication: '📈 Siaki au Vailaʻau',
@@ -168,7 +174,9 @@ const labels = {
     medicinesChat: '用药咨询',
     askPlaceholder: '💡 请输入与用药相关的问题',
     send: '发送',
-    stop: '停止',
+ stop: '停止',
+    listening: '正在聆听…',          // ← add
+    thinking: '正在思考…',            // ← add
     tapToAsk: '点击提问',
     setReminder: '➕ 设置提醒',
     trackYourMedication: '📈 用药追踪',
@@ -194,7 +202,7 @@ const t = (key, ...args) => {
 
 const BCP47 = {
   English: 'en-US',          // or 'en-NZ' if you prefer
-  'Te Reo Māori': 'mi',
+'Te Reo Māori': 'mi-NZ', // more reliable on some browsers
   Samoan: 'sm',
   Mandarin: 'zh-CN',
 };
@@ -206,6 +214,40 @@ const BCP47 = {
         const onMessageUnsubRef = useRef(null);
         const chatAbortRef = useRef(null); // aborts an in-flight chat stream
         const answerBoxRef = useRef(null);
+
+        // 🔔 Gentle periodic beep while the model is thinking
+const thinkingBeepRef = useRef({ ctx: null, intervalId: null });
+
+function playSingleBeep() {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    const ctx = thinkingBeepRef.current.ctx || new AC();
+    thinkingBeepRef.current.ctx = ctx;
+    if (ctx.state === 'suspended') ctx.resume();
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = 880;   // A5
+    gain.gain.value = 0.002;     // very soft
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    setTimeout(() => { osc.stop(); osc.disconnect(); gain.disconnect(); }, 120);
+  } catch {}
+}
+function startThinkingBeep() {
+  if (thinkingBeepRef.current.intervalId) return;
+  playSingleBeep();                             // beep immediately
+  thinkingBeepRef.current.intervalId = setInterval(playSingleBeep, 3000);
+}
+function stopThinkingBeep() {
+  try { clearInterval(thinkingBeepRef.current.intervalId); } catch {}
+  thinkingBeepRef.current.intervalId = null;
+  try { thinkingBeepRef.current.ctx?.close(); } catch {}
+  thinkingBeepRef.current.ctx = null;
+}
 
      // === modal helpers (must be inside App so they can access setOpenModal) ===
 function openModalAndSetHash(kind) {
@@ -323,6 +365,14 @@ useEffect(() => {
   };
 }, []);
 
+useEffect(() => {
+  if (activeTab === 'voice' && !isListening && loading) {
+    startThinkingBeep();
+  } else {
+    stopThinkingBeep();
+  }
+  return () => stopThinkingBeep();
+}, [activeTab, isListening, loading]);
 
 useEffect(() => {
   const onKey = (e) => {
@@ -634,8 +684,10 @@ function speakAnswer(text) {
     const voices = speechSynthesis.getVoices?.() || [];
     const exact = voices.find(v => v.lang?.toLowerCase() === lang.toLowerCase());
     const prefix = voices.find(v => v.lang?.toLowerCase().startsWith(lang.split('-')[0].toLowerCase()));
-    utterance.voice = exact || prefix || null;
-    speechSynthesis.speak(utterance);
+ utterance.voice = exact || prefix || null;
+// subtle ping when TTS begins
+utterance.onstart = () => { try { playSingleBeep(); } catch {} };
+speechSynthesis.speak(utterance);
   };
 
   // Some browsers load voices asynchronously
@@ -927,6 +979,7 @@ recognition.maxAlternatives = 1;
 
         recognition.onstart = () => {
             setIsListening(true);
+             stopThinkingBeep();     // ⬅️ add this line
             console.log("🎙️ Listening...");
         };
 
@@ -935,11 +988,15 @@ recognition.maxAlternatives = 1;
             console.log("🛑 Stopped listening");
         };
 
-        recognition.onresult = (event) => {
-            const transcript = event.results[0][0].transcript;
-            console.log("🗣️ You said:", transcript);
-            handleVoiceQuery(transcript);
-        };
+recognition.onresult = (event) => {
+  const transcript = event.results[0][0].transcript;
+  console.log("🗣️ You said:", transcript);
+
+  // start the gentle “thinking” beep immediately
+  try { if (activeTab === 'voice') startThinkingBeep(); } catch {}
+
+  handleVoiceQuery(transcript);
+};
 
         // Store in window for global access
         window.recognition = recognition;
@@ -1083,7 +1140,7 @@ const nextDoseMs = nextDoseTime
                     </div>
 
 <button className="send-button" type="submit" disabled={loading}>
-  {loading ? 'Thinking…' : t('send')}
+  {loading ? t('thinking') : t('send')}
 </button>
 
 {loading && (
@@ -1512,30 +1569,34 @@ try {
                     <h3>🎙️ {t('voiceAssistant')}</h3>
 
                     <div className="mic-row">
-                    <button
-                        className="mic-button"
-                        onClick={() => {
-                        if (window.recognition) {
-                            window.recognition.start();
-                        } else {
-                            alert("🎤 Voice recognition not supported in this browser.");
-                        }
-                        }}
-                        aria-label="Start listening"
-                    >
-                        🔊🎤 {isListening ? "Listening..." : t('tapToAsk')}
-                    </button>
+<button
+  className="mic-button"
+  onClick={() => {
+    if (window.recognition) {
+      window.recognition.start();
+    } else {
+      alert("🎤 Voice recognition not supported in this browser.");
+    }
+  }}
+  aria-label="Start listening"
+  aria-busy={(isListening || loading) ? 'true' : 'false'}
+  disabled={isListening || loading}                        // ⛔ prevent re-triggers
+>
+  🔊🎤 {isListening ? t('listening') : (loading ? t('thinking') : t('tapToAsk'))}
+</button>
 
-                    <button
-                        className="mic-button stop"
-                        onClick={() => {
-                        try { window.recognition?.stop(); } catch {}
-                        try { window.speechSynthesis?.cancel(); } catch {}
-                        }}
-                        aria-label="Stop listening"
-                    >
-                        ⛔ {t('stop')}
-                    </button>
+             <button
+  className="mic-button stop"
+  onClick={() => {
+    try { window.recognition?.stop(); } catch {}
+    try { window.speechSynthesis?.cancel(); } catch {}
+    try { chatAbortRef.current?.abort(); } catch {}        // ⬅️ stop answer stream
+    stopThinkingBeep();                                    // ⬅️ stop the beep now
+  }}
+  aria-label="Stop listening"
+>
+  ⛔ {t('stop')}
+</button>      
                     </div>
                 </div>
                 )}
