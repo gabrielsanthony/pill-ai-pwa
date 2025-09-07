@@ -62,6 +62,137 @@ function App() {
     const [toast, setToast] = useState(null);           // { title, body } or null
     const [toastVisible, setToastVisible] = useState(false);
     const [openModal, setOpenModal] = useState(null); // 'instructions' | 'privacy' | 'faq' | null
+
+// ----- i18n helpers -----
+const NORMALIZE_LANG = (uiLang) => {
+  const map = {
+    English: 'English',
+    Samoan: 'Samoan',
+    Mandarin: 'Chinese (Simplified)', // adjust to what your backend expects
+    'Te Reo Māori': 'Māori',          // many models expect "Māori" (or "Te Reo Maori")
+    'Te Reo Maori': 'Māori',
+  };
+  return map[uiLang] || uiLang;
+};
+
+const labels = {
+  English: {
+    tabChat: 'Chat',
+    tabTrack: 'Track',
+    tabVoice: 'Voice',
+    tabLearn: 'Learn',
+    tabEarn: 'Earn',
+    tabSupport: 'Support',
+    languageLabel: 'Language:',
+    medicinesChat: 'MEDICINES CHAT',
+    askPlaceholder: '💡 Ask a medication related question',
+    send: 'Send',
+    stop: 'Stop',
+    tapToAsk: 'Tap to Ask',
+    setReminder: '➕ Set Med Reminder',
+    trackYourMedication: '📈 Track Your Medication',
+    nextDoseNotSet: 'Next dose: not set',
+    overdue: (mins) => `Overdue: ${mins} min ago`,
+    nextDoseIn: (time) => `Next dose in: ${time}`,
+    medsTaken: 'Meds Taken',
+    cancelReminders: 'Cancel Reminders',
+    voiceAssistant: 'Voice Assistant',
+    howto: 'How-to',
+    privacy: 'Privacy',
+    faq: 'FAQ',
+    greatJob: 'Great job!',
+    completedAll: "You've completed all your scheduled doses. Keep up the good work!",
+  },
+  'Te Reo Māori': {
+    tabChat: 'Kōrerorero',
+    tabTrack: 'Aroturuki',
+    tabVoice: 'Reo',
+    tabLearn: 'Ako',
+    tabEarn: 'Whiwhi',
+    tabSupport: 'Tautoko',
+    languageLabel: 'Reo:',
+    medicinesChat: 'KŌRERORERO RONGOĀ',
+    askPlaceholder: '💡 Pātai mō ngā rongoā',
+    send: 'Tukua',
+    stop: 'Katia',
+    tapToAsk: 'Pāwhiritia kia pātai',
+    setReminder: '➕ Tautuhia he Whakamaumahara',
+    trackYourMedication: '📈 Aroturuki i ō Rongoā',
+    nextDoseNotSet: 'Te horopeta e whai ake nei: kāore anō kia tautuhia',
+    overdue: (mins) => `Whakaroa: ${mins} meneti ki muri`,
+    nextDoseIn: (time) => `Te horopeta e whai ake nei i: ${time}`,
+    medsTaken: 'Kua Tangohia ngā Rongoā',
+    cancelReminders: 'Whakakore Whakamaumahara',
+    voiceAssistant: 'Kaitautoko Reo',
+    howto: 'Me pēhea',
+    privacy: 'Tūmataiti',
+    faq: 'Ngā Pātai Auau',
+    greatJob: 'Tino pai!',
+    completedAll: 'Kua oti katoa ō horopeta kua whakaritea. Kia kaha tonu!',
+  },
+  Samoan: {
+    tabChat: 'Talanoa',
+    tabTrack: 'Siaki',
+    tabVoice: 'Leo',
+    tabLearn: 'Aʻoaʻo',
+    tabEarn: 'Maua',
+    tabSupport: 'Lagolago',
+    languageLabel: 'Gagana:',
+    medicinesChat: 'TALANOAGA O VAILAʻAU',
+    askPlaceholder: '💡 Fesili e uiga i vailaʻau',
+    send: 'Auina',
+    stop: 'Taofi',
+    tapToAsk: 'Kiliki e fesili',
+    setReminder: '➕ Seti Manatua',
+    trackYourMedication: '📈 Siaki au Vailaʻau',
+    nextDoseNotSet: 'Taimi e sosoo ai: e leʻi setiina',
+    overdue: (mins) => `Faʻatuai: ${mins} minute talu ai`,
+    nextDoseIn: (time) => `Taimi e sosoo ai i totonu o: ${time}`,
+    medsTaken: 'Ua Inu Vailaʻau',
+    cancelReminders: 'Soloia Manatua',
+    voiceAssistant: 'Fesoasoani Leo',
+    howto: 'Faʻaaogā',
+    privacy: 'Tūmataiti',
+    faq: 'FAQ',
+    greatJob: 'Matagofie!',
+    completedAll: 'Ua maeʻa uma au horopeta faatulagaina. Faʻaauau pea!',
+  },
+  Mandarin: {
+    tabChat: '聊天',
+    tabTrack: '追踪',
+    tabVoice: '语音',
+    tabLearn: '学习',
+    tabEarn: '奖励',
+    tabSupport: '支持',
+    languageLabel: '语言：',
+    medicinesChat: '用药咨询',
+    askPlaceholder: '💡 请输入与用药相关的问题',
+    send: '发送',
+    stop: '停止',
+    tapToAsk: '点击提问',
+    setReminder: '➕ 设置提醒',
+    trackYourMedication: '📈 用药追踪',
+    nextDoseNotSet: '下一次用药：未设置',
+    overdue: (mins) => `已超时：${mins} 分钟前`,
+    nextDoseIn: (time) => `距离下一次用药：${time}`,
+    medsTaken: '已服药',
+    cancelReminders: '取消提醒',
+    voiceAssistant: '语音助手',
+    howto: '使用说明',
+    privacy: '隐私',
+    faq: '常见问题',
+    greatJob: '太棒了！',
+    completedAll: '你已完成所有预定剂量，继续保持！',
+  },
+};
+
+const t = (key, ...args) => {
+  const pack = labels[language] || labels.English;
+  const v = pack[key] ?? labels.English[key] ?? key;
+  return typeof v === 'function' ? v(...args) : v;
+};
+
+
     const toastTimerRef = useRef(null);
     // Guards so we attach each foreground listener exactly once
         const swListenerAttachedRef = useRef(false);
@@ -399,12 +530,12 @@ async function streamAnswerForText(initialQuestion, options = {}) {
 
   if (initialQuestion) setQuestion(initialQuestion);
 
-  const payload = {
-    question: initialQuestion || question,
-    language,
-    simplify: true,
-    memory: false
-  };
+const payload = {
+  question: initialQuestion || question,
+  language: NORMALIZE_LANG(language),
+  simplify: true,
+  memory: false
+};
 
   setAnswer('');
   setShowReminderForm(false);
@@ -684,14 +815,6 @@ useEffect(() => {
   }
 }, [answer, loading]);
 
-useEffect(() => {
-  if (answerBoxRef.current) {
-    answerBoxRef.current.scrollTop = 0; // stay at top while it streams
-  }
-}, [answer]);
-
-
-
     // ✅ Automatically request permission + save push token on app load
     useEffect(() => {
         const setupNotifications = async () => {
@@ -873,7 +996,7 @@ const nextDoseMs = nextDoseTime
                     <img src={logo} alt="Pill-AI Logo" className="logo" />
                     <div className="language-selector">
                         <label htmlFor="language" style={{ fontWeight: "bold", display: "block", marginBottom: "4px" }}>
-                            🌐 Language:
+                            🌐 {t('languageLabel')}
                         </label>
                         <select id="language" value={language} onChange={(e) => setLanguage(e.target.value)}>
                             <option value="English">English</option>
@@ -939,12 +1062,12 @@ const nextDoseMs = nextDoseTime
 
 
                 <div className="tab-bar">
-                     <button className={activeTab === 'ask' ? 'tab active' : 'tab'} onClick={() => goToTab('ask')}>💬 Chat</button>
-                        <button className={activeTab === 'track' ? 'tab active' : 'tab'} onClick={() => goToTab('track')}>💊 Track</button>
-                        <button className={activeTab === 'voice' ? 'tab active' : 'tab'} onClick={() => goToTab('voice')}>🎙️ Voice</button>
-                        <button className={activeTab === 'learn' ? 'tab active' : 'tab'} onClick={() => goToTab('learn')}>📘 Learn</button>
-                        <button className={activeTab === 'earn' ? 'tab active' : 'tab'} onClick={() => goToTab('earn')}>🏆 Earn</button>
-                        <button className={activeTab === 'support' ? 'tab active' : 'tab'} onClick={() => goToTab('support')}>🤝 Support</button>
+                     <button className={activeTab === 'ask' ? 'tab active' : 'tab'} onClick={() => goToTab('ask')}>💬 {t('tabChat')}</button>
+                        <button className={activeTab === 'track' ? 'tab active' : 'tab'} onClick={() => goToTab('track')}>💊 {t('tabTrack')}</button>
+                        <button className={activeTab === 'voice' ? 'tab active' : 'tab'} onClick={() => goToTab('voice')}>🎙️ {t('tabVoice')}</button>
+                        <button className={activeTab === 'learn' ? 'tab active' : 'tab'} onClick={() => goToTab('learn')}>📘 {t('tabLearn')}</button>
+                        <button className={activeTab === 'earn' ? 'tab active' : 'tab'} onClick={() => goToTab('earn')}>🏆 {t('tabEarn')}</button>
+                        <button className={activeTab === 'support' ? 'tab active' : 'tab'} onClick={() => goToTab('support')}>🤝 {t('tabSupport')}</button>
                 </div>
             
             <div className="card-viewport">
@@ -957,20 +1080,20 @@ const nextDoseMs = nextDoseTime
   onSubmit={submitQuestionStreaming}
 >
 
-                    <h2 className="card-title">💬 Medicines Chat</h2>
+                    <h2 className="card-title">💬 {t('medicinesChat')}</h2>
 
                     <div className="form-group">
                         <input
                             type="text"
                             className="question-input"
-                            placeholder="💡 Ask a medication related question"
+                            placeholder={t('askPlaceholder')}
                             value={question}
                             onChange={(e) => setQuestion(e.target.value)}
                         />
                     </div>
 
 <button className="send-button" type="submit" disabled={loading}>
-  {loading ? 'Thinking…' : 'Send'}
+  {loading ? 'Thinking…' : t('send')}
 </button>
 
 {loading && (
@@ -982,7 +1105,7 @@ const nextDoseMs = nextDoseTime
     }}
     style={{ marginLeft: 8 }}
   >
-    ⛔ Stop
+    ⛔ {t('stop')}
   </button>
 )}
 
@@ -1004,13 +1127,8 @@ const nextDoseMs = nextDoseTime
 
   return (
     <div>
-<div
-  className="answer-box"
-  ref={answerBoxRef}
-  style={{ maxHeight: 260, overflowY: 'auto' }}
->
+<div className="answer-box" ref={answerBoxRef}>
   <p className="answer-text">{body}</p>
-
   {source && (
     <div
       className="answer-source"
@@ -1020,6 +1138,7 @@ const nextDoseMs = nextDoseTime
     </div>
   )}
 </div>
+
     </div>
   );
 })()}
@@ -1218,7 +1337,7 @@ try {
 
                 {/* ✅ Progress Tracking UI */}
                 <div id="progress-section" className="progress-section">
-                    <h3>📈 Track Your Medication</h3>
+                    <h3>📈 {t('trackYourMedication')}on</h3>
 
                     {!showReminderForm && (
                         <button
@@ -1234,7 +1353,7 @@ try {
                             }}
                             style={{ marginBottom: '10px' }}
                         >
-                            ➕ Set Med Reminder
+                            ➕ {t('setReminder')}
                         </button>
                     )}
 
@@ -1304,7 +1423,7 @@ try {
                                     }
                                 }}
                             >
-                                ✅ Meds Taken
+                                ✅ {t('medsTaken')}
                             </button>
 
                             {/* 🔒 Reset button removed for production
@@ -1325,13 +1444,13 @@ try {
                         </div>
                     ) : (
 <div>
-  {nextDoseMs === null ? (
-    <p>⏳ Next dose: <strong>not set</strong></p>
-  ) : nextDoseMs < Date.now() ? (
-    <p>⏰ Overdue: <strong>{Math.max(0, Math.floor((Date.now() - nextDoseMs) / 60000))} min ago</strong></p>
-  ) : (
-    <p>⏳ Next dose in: <strong>{timeRemaining}</strong></p>
-  )}
+{nextDoseMs === null ? (
+  <p>⏳ {t('nextDoseNotSet')}</p>
+) : nextDoseMs < Date.now() ? (
+  <p>⏰ {t('overdue')(Math.max(0, Math.floor((Date.now() - nextDoseMs) / 60000)))}</p>
+) : (
+  <p>⏳ {t('nextDoseIn')(timeRemaining)}</p>
+)}
 
   <button
     className="cancel-button small"
@@ -1381,7 +1500,7 @@ try {
       }
     }}
   >
-    🗑️ Cancel Reminders
+    🗑️ {t('cancelReminders')}
   </button>
 </div>
 
@@ -1391,8 +1510,8 @@ try {
                 
                 {isCourseComplete && (
                     <div className="progress-section">
-                        <h3>🎉 Great job!</h3>
-                        <p>You've completed all your scheduled doses. Keep up the good work!</p>
+                        <h3>🎉 {t('greatJob')}</h3>
+                        <p>{t('completedAll')}</p>
                     </div>
                 )}
                   </div>
@@ -1400,7 +1519,7 @@ try {
 
                 {activeTab === 'voice' && (
                 <div className="card voice-card">
-                    <h3>🎙️ Voice Assistant</h3>
+                    <h3>🎙️ {t('voiceAssistant')}</h3>
 
                     <div className="mic-row">
                     <button
@@ -1414,7 +1533,7 @@ try {
                         }}
                         aria-label="Start listening"
                     >
-                        🔊🎤 {isListening ? "Listening..." : "Tap to Ask"}
+                        🔊🎤 {isListening ? "Listening..." : t('tapToAsk')}
                     </button>
 
                     <button
@@ -1425,7 +1544,7 @@ try {
                         }}
                         aria-label="Stop listening"
                     >
-                        ⛔ Stop
+                        ⛔ {t('stop')}
                     </button>
                     </div>
                 </div>
@@ -1468,7 +1587,7 @@ try {
     aria-label="How to use Pill-AI"
     title="How to use Pill-AI"
   >
-    📖 How-to
+    📖 {t('howto')}
   </button>
 
   <button
@@ -1478,7 +1597,7 @@ try {
     aria-label="Privacy policy"
     title="Privacy policy"
   >
-    🛡️ Privacy
+    🛡️ {t('privacy')}
   </button>
 
   <button
@@ -1488,7 +1607,7 @@ try {
     aria-label="Frequently Asked Questions"
     title="Frequently Asked Questions"
   >
-    ❓ FAQ
+    ❓ {t('faq')}
   </button>
 </footer>
 
