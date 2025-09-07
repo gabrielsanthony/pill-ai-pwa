@@ -137,20 +137,26 @@ export default async function handler(req, res) {
 const language = canonicalLanguage(
   typeof body.language === 'string' ? body.language : 'English'
 );  
+
+// Use wording the model obeys more reliably
+const targetLanguage = (language === 'Mandarin') ? 'Chinese (Simplified)' : language;
+
 if (question.length < 3) {
     return wantStream ? endStream(res, 'Please send a valid question') : res.status(400).json({ error: 'Please send a valid question' });
   }
 
-  if (!isMedicineQuestion(question)) {
-    const refusal =
-      "Pill-AI only answers medicine questions using NZ Medsafe Consumer Medicine Information.\n" +
-      "Try asking things like:\n" +
-      "• “What’s the usual adult dose of amoxicillin?”\n" +
-      "• “Can ibuprofen be taken with paracetamol?”\n" +
-      "• “Common side effects of sertraline?”\n" +
-      "• “What should I do if I miss a dose of metformin?”";
-    return wantStream ? endStream(res, refusal) : sendAnswer(res, refusal);
-  }
+// Only enforce the English keyword guard for likely-English input
+const looksAscii = /^[\x00-\x7F]+$/.test(question);
+if (looksAscii && !isMedicineQuestion(question)) {
+  const refusal =
+    "Pill-AI only answers medicine questions using NZ Medsafe Consumer Medicine Information.\n" +
+    "Try asking things like:\n" +
+    "• “What’s the usual adult dose of amoxicillin?”\n" +
+    "• “Can ibuprofen be taken with paracetamol?”\n" +
+    "• “Common side effects of sertraline?”\n" +
+    "• “What should I do if I miss a dose of metformin?”";
+  return wantStream ? endStream(res, refusal) : sendAnswer(res, refusal);
+}
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 60_000);
@@ -169,7 +175,14 @@ if (question.length < 3) {
     const threadRes = await fetch('https://api.openai.com/v1/threads', {
       method: 'POST',
       headers: buildHeaders(apiKey, projectId, true),
-      body: JSON.stringify({ messages: [{ role: 'user', content: question }] }),
+
+body: JSON.stringify({
+  messages: [{
+    role: 'user',
+    content: `Please answer ONLY in ${targetLanguage}. ${question}`
+  }]
+}),
+
       signal: controller.signal,
     });
     if (!threadRes.ok) {
@@ -182,7 +195,8 @@ if (question.length < 3) {
     const runCreateBody = {
       assistant_id: assistantId,
       additional_instructions: `
-Answer in ${language}. Use plain text only (no emojis, no headings).
+You MUST answer exclusively in ${targetLanguage}. If the user asks in another language, translate internally but output strictly in ${targetLanguage}.
+Use plain text only (no emojis, no headings).
 Structure:
 1) Brief 1–2 sentence summary.
 2) If you need a list, use one-line "- " bullets (max 6).
