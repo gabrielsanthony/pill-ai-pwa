@@ -66,6 +66,26 @@ function tidyStyle(s = '') {
   return out;
 }
 
+// --- Language canonicalization (no i18n lib needed) ---
+function canonicalLanguage(uiLang = 'English') {
+  const map = {
+    // Canonical names we want to send to the model
+    'English': 'English',
+    'Te Reo Māori': 'Te Reo Māori',
+    'Samoan': 'Samoan',
+    'Mandarin': 'Mandarin',
+
+    // Common variants we accept → normalize to the above
+    'Te Reo Maori': 'Te Reo Māori',   // no-macron
+    'Maori': 'Te Reo Māori',          // ascii
+    'Māori': 'Te Reo Māori',          // short form
+    'Chinese (Simplified)': 'Mandarin',
+    'Chinese': 'Mandarin',
+    'Zh-CN': 'Mandarin',
+  };
+  return map[uiLang] || 'English';
+}
+
 // Build headers for all OpenAI calls (Assistants v2 + optional project)
 function buildHeaders(apiKey, projectId, includeJson = true) {
   return {
@@ -114,8 +134,10 @@ export default async function handler(req, res) {
 
   const body = req.body || {};
   const question = typeof body.question === 'string' ? body.question.trim() : '';
-  const language = typeof body.language === 'string' ? body.language : 'English';
-  if (question.length < 3) {
+const language = canonicalLanguage(
+  typeof body.language === 'string' ? body.language : 'English'
+);  
+if (question.length < 3) {
     return wantStream ? endStream(res, 'Please send a valid question') : res.status(400).json({ error: 'Please send a valid question' });
   }
 

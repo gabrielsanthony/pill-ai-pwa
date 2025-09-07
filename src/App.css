@@ -132,6 +132,8 @@ input[type="text"], select {
   font-size: 1.05rem;
   text-align: left;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+max-height: none !important;
+  overflow: visible !important;
 }
 
 .answer-box strong {
@@ -821,3 +823,23 @@ select {
 .faq summary::-webkit-details-marker { display: none; }
 .faq ol, .faq ul { margin: 8px 0 0 18px; }
 .faq li { margin: 6px 0; }
+
+/* --- Make the answer block expand fully (no scrollbar) --- */
+.answer-box {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;      /* allow content to grow */
+  overflow-y: visible !important;
+}
+
+/* preserve newlines/blank lines (you already have this, keeping here for clarity) */
+.answer-box .answer-text { white-space: pre-wrap; line-height: 1.55; }
+
+/* If (accidentally) using a <textarea class="answer-box">, stop it from scrolling */
+textarea.answer-box {
+  display: block;
+  height: auto !important;
+  min-height: 0 !important;
+  overflow-y: hidden !important;     /* hide the internal scrollbar */
+  resize: none;                      /* optional: prevent manual resize handle */
+}

@@ -192,6 +192,13 @@ const t = (key, ...args) => {
   return typeof v === 'function' ? v(...args) : v;
 };
 
+const BCP47 = {
+  English: 'en-US',          // or 'en-NZ' if you prefer
+  'Te Reo Māori': 'mi',
+  Samoan: 'sm',
+  Mandarin: 'zh-CN',
+};
+
 
     const toastTimerRef = useRef(null);
     // Guards so we attach each foreground listener exactly once
@@ -617,11 +624,28 @@ async function submitQuestionStreaming(e) {
   await streamAnswerForText('');  // use current `question` state
 }
 
-    function speakAnswer(text) {
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = "en-US";
-        speechSynthesis.speak(utterance);
-    }
+function speakAnswer(text) {
+  const utterance = new SpeechSynthesisUtterance(text);
+  const lang = BCP47[language] || 'en-US';
+  utterance.lang = lang;
+
+  // Try to pick a matching voice if available
+  const chooseVoice = () => {
+    const voices = speechSynthesis.getVoices?.() || [];
+    const exact = voices.find(v => v.lang?.toLowerCase() === lang.toLowerCase());
+    const prefix = voices.find(v => v.lang?.toLowerCase().startsWith(lang.split('-')[0].toLowerCase()));
+    utterance.voice = exact || prefix || null;
+    speechSynthesis.speak(utterance);
+  };
+
+  // Some browsers load voices asynchronously
+  if (!speechSynthesis.getVoices || speechSynthesis.getVoices().length > 0) {
+    chooseVoice();
+  } else {
+    const handler = () => { try { chooseVoice(); } finally { speechSynthesis.removeEventListener('voiceschanged', handler); } };
+    speechSynthesis.addEventListener('voiceschanged', handler);
+  }
+}
 
     // 🔁 Restore progress from localStorage
     useEffect(() => {
@@ -896,10 +920,10 @@ useEffect(() => {
             return;
         }
 
-        const recognition = new SpeechRecognition();
-        recognition.lang = "en-US";
-        recognition.interimResults = false;
-        recognition.maxAlternatives = 1;
+const recognition = new SpeechRecognition();
+recognition.lang = BCP47[language] || 'en-US';
+recognition.interimResults = false;
+recognition.maxAlternatives = 1;
 
         recognition.onstart = () => {
             setIsListening(true);
@@ -920,6 +944,12 @@ useEffect(() => {
         // Store in window for global access
         window.recognition = recognition;
     }, []);
+
+    useEffect(() => {
+  if (window.recognition) {
+    try { window.recognition.lang = BCP47[language] || 'en-US'; } catch {}
+  }
+}, [language]);
 
     // ▶️ Run overdue catch-up on load
 useEffect(() => {
@@ -944,46 +974,6 @@ useEffect(() => {
   document.addEventListener('visibilitychange', onVis);
   return () => document.removeEventListener('visibilitychange', onVis);
 }, []);
-
-
-
-    const content = {
-        English: {
-            privacy: "Pill-AI does not collect or store any personal data. All interactions are processed anonymously. Please consult a healthcare professional for any medical concerns.",
-            faq: [
-                { q: 'Can I trust Pill-AI?', a: 'Pill-AI uses official NZ medicine data but is only a prototype.' },
-                { q: 'Does it store my data?', a: 'No, it processes your questions anonymously.' },
-                { q: 'Is it suitable for emergencies?', a: 'No. Always consult a pharmacist or doctor for urgent concerns.' }
-            ]
-        },
-        'Te Reo Māori': {
-            privacy: "Kāore a Pill-AI e kohikohi, e pupuri rānei i ngā raraunga whaiaro. Ka mahia ā-tūmataiti ngā pātai katoa. Tēnā tirohia tētahi rata mō ngā āwangawanga hauora.",
-            faq: [
-                { q: 'Ka taea e au te whakawhirinaki ki a Pill-AI?', a: 'He raraunga rongoā whaimana nō Aotearoa e whakamahia ana, engari he tauira anake tēnei.' },
-                { q: 'Ka penapena raraunga taku?', a: 'Kāo. Ka whakahaeretia ā-tūmataiti ngā pātai.' },
-                { q: 'He pai mō ngā take ohorere?', a: 'Kāo. Me whakapā tonu ki te rata, ki te kaiwhakarato rongoā rānei.' }
-            ]
-        },
-        Samoan: {
-            privacy: "E le aoina pe teu e Pill-AI ni faamatalaga patino. E faagasolo uma fesili i se auala e le mafai ona iloa ai se tagata. Faamolemole fesili i se foma’i pe afai e iai ni ou popolega tau le soifua maloloina.",
-            faq: [
-                { q: 'E mafai ona ou faatuatuaina le Pill-AI?', a: 'O lo’o fa’aaoga ai faamatalaga aloa’ia i Niu Sila ae o se fa’ata’ita’iga lea.' },
-                { q: 'E teu ai a’u faamatalaga?', a: 'Leai. E faagasolo i se auala e le mafai ona iloa ai.' },
-                { q: 'E mafai ona fa’aaoga i tulaga fa’afuase’i?', a: 'Leai. Faamolemole fesili i se foma’i pe lo’o tauave rongoā.' }
-            ]
-        },
-        Mandarin: {
-            privacy: "Pill-AI 不会收集或存储任何个人数据。所有互动都是匿名处理的。如有健康问题，请咨询医生或药剂师",
-            faq: [
-                { q: '我可以信任 Pill-AI 吗？', a: 'Pill-AI 使用的是新西兰官方药品信息，但目前仅是一个原型。' },
-                { q: '它会存储我的数据吗？', a: '不会，所有问题都是匿名处理的。' },
-                { q: '适用于紧急情况吗？', a: '不适用。如遇紧急情况，请立即联系医生或药剂师。' }
-            ]
-        }
-    };
-
-
-
 
 const nextDoseMs = nextDoseTime
   ? (nextDoseTime instanceof Date ? nextDoseTime.getTime() : new Date(nextDoseTime).getTime())
@@ -1337,7 +1327,7 @@ try {
 
                 {/* ✅ Progress Tracking UI */}
                 <div id="progress-section" className="progress-section">
-                    <h3>📈 {t('trackYourMedication')}on</h3>
+                    <h3>📈 {t('trackYourMedication')}</h3>
 
                     {!showReminderForm && (
                         <button
@@ -1359,7 +1349,7 @@ try {
 
                     {hasReminder && !isCourseComplete && (
                         <>
-                            <progress max="100" value={(medsTaken / (durationDays * timesPerDay)) * 100}></progress>
+                            <progress max="100" value={((medsTaken || 0) / ((durationDays || 1) * (timesPerDay || 1))) * 100}></progress>
                             <p>{Math.floor((medsTaken / (durationDays * timesPerDay)) * 100)}% of your meds journey completed</p>
                         </>
                     )}
@@ -1447,9 +1437,9 @@ try {
 {nextDoseMs === null ? (
   <p>⏳ {t('nextDoseNotSet')}</p>
 ) : nextDoseMs < Date.now() ? (
-  <p>⏰ {t('overdue')(Math.max(0, Math.floor((Date.now() - nextDoseMs) / 60000)))}</p>
+<p>⏰ {t('overdue', Math.max(0, Math.floor((Date.now() - nextDoseMs) / 60000)))}</p>
 ) : (
-  <p>⏳ {t('nextDoseIn')(timeRemaining)}</p>
+<p>⏳ {t('nextDoseIn', timeRemaining)}</p>
 )}
 
   <button
@@ -1615,6 +1605,7 @@ try {
 <HowToPillAI
   isOpen={openModal === 'instructions'}
   onClose={() => closeModalAndClearHash()}
+  language={language}
 />
 
 <PrivacyPolicy
@@ -1626,6 +1617,7 @@ try {
 <FAQ
   isOpen={openModal === 'faq'}
   onClose={() => closeModalAndClearHash()}
+  language={language}
 />
 
       </div> {/* closes app-container */}
