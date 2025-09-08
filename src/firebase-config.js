@@ -1,8 +1,8 @@
 // src/firebase-config.js
-import { initializeApp } from 'firebase/app';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { getFirestore } from 'firebase/firestore';
-import { getAuth, signInAnonymously } from 'firebase/auth';
+import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { getApp, getApps, initializeApp } from 'firebase/app';
 
 // ✅ Your existing config
 const firebaseConfig = {
@@ -16,7 +16,7 @@ const firebaseConfig = {
 };
 
 // ✅ Initialize Firebase
-const app = initializeApp(firebaseConfig);
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
 // 🔔 Messaging
 const messaging = getMessaging(app);
@@ -26,6 +26,8 @@ const db = getFirestore(app);
 
 // 👤 Auth
 const auth = getAuth(app);
+onAuthStateChanged(auth, () => {}); // Prime auth readiness
+
 
 // 🚀 Anonymous sign-in (auto)
 signInAnonymously(auth).catch((error) => {

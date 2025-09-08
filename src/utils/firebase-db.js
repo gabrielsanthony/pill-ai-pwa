@@ -2,9 +2,9 @@
 // Reuse already-initialized Firebase from your config file:
 import { db, auth } from '../firebase-config';
 import {
-  doc, setDoc, addDoc, collection,
+  doc, setDoc, collection,
   serverTimestamp, getDocs, getDoc,
-  query, orderBy, where, limit,
+  query, orderBy, limit,
   onSnapshot
 } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -29,6 +29,11 @@ export function waitForAuthReady() {
   });
 }
 
+export async function getCurrentUid() {
+  const u = await waitForAuthReady();
+  return u?.uid || null;
+}
+
 // Build auth headers with Firebase ID token (for HTTPS Cloud Functions)
 async function authHeaders() {
   const user = await waitForAuthReady();
@@ -39,20 +44,18 @@ async function authHeaders() {
 
 // Cloud Functions base URL (v2 HTTPS). Set this in your env (.env.local / Vercel).
 const BASE = import.meta.env.VITE_FUNCTIONS_BASE_URL || '';
-function assertBase() {
-  if (!BASE) {
-    console.warn('VITE_FUNCTIONS_BASE_URL is not set. Calls to Cloud Functions will fail.');
-  }
+function requireBase() {
+  if (!BASE) throw new Error('VITE_FUNCTIONS_BASE_URL is not set');
 }
 
 /* =========================================================
    🔹 NEW: Single Cheer Squad + Invite Codes (mutual add/remove)
    Firestore shape:
      users/{uid}/cheerSquad/{otherUid} -> { joinedAt, displayName? }
-   Cloud Functions (you added):
-     GET  {BASE}/createInviteCode       -> { code, expiresAt }
-     POST {BASE}/redeemInviteCode {code}-> { ok: true }
-     POST {BASE}/removeCheerLink {uid}  -> { ok: true }
+   Cloud Functions you noted:
+     GET  {BASE}/createInviteCode         -> { code, expiresAt }
+     POST {BASE}/redeemInviteCode {code}  -> { ok: true }
+POST {BASE}/removeCheerLink {otherUid} -> { ok: true }
 ========================================================= */
 
 // Real-time listener for my single Cheer Squad list
@@ -63,20 +66,24 @@ export function listenCheerSquad(cb) {
     if (!user) return;
     const colRef = collection(db, 'users', user.uid, 'cheerSquad');
     const qy = query(colRef, orderBy('joinedAt', 'desc'));
-    stop = onSnapshot(qy, (snap) => {
-      const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      cb(rows);
-    }, (err) => {
-      console.error('listenCheerSquad error:', err);
-      cb([]);
-    });
+    stop = onSnapshot(
+      qy,
+      (snap) => {
+        const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        cb(rows);
+      },
+      (err) => {
+        console.error('listenCheerSquad error:', err);
+        cb([]);
+      }
+    );
   });
   return () => stop && stop();
 }
 
 // Create an invite code tied to the current user
 export async function generateInviteCode() {
-  assertBase();
+  requireBase();
   const headers = await authHeaders();
   const res = await fetch(`${BASE}/createInviteCode`, { method: 'GET', headers });
   const data = await res.json().catch(() => ({}));
@@ -86,7 +93,7 @@ export async function generateInviteCode() {
 
 // Redeem an invite code (server performs mutual add)
 export async function redeemInviteCode(code) {
-  assertBase();
+  requireBase();
   const headers = await authHeaders();
   const res = await fetch(`${BASE}/redeemInviteCode`, {
     method: 'POST',
@@ -99,8 +106,9 @@ export async function redeemInviteCode(code) {
 }
 
 // Mutual remove (server deletes both directions)
+// NOTE: server expects { uid } per your comment
 export async function removeCheerMate(otherUid) {
-  assertBase();
+  requireBase();
   const headers = await authHeaders();
   const res = await fetch(`${BASE}/removeCheerLink`, {
     method: 'POST',
@@ -121,9 +129,11 @@ export async function removeCheerMate(otherUid) {
 
 // Write a support event (NUDGE, CHEER, CHECKED, etc.)
 export async function addSupportEvent(ownerId, payload) {
+  // Either of these are fine; this uses auto-ID the “doc(collectionRef)” trick:
   const ref = doc(collection(db, 'owners', ownerId, 'supportEvents'));
   await setDoc(ref, { ...payload, ts: serverTimestamp() });
   return { id: ref.id, ...payload };
+  // (Alternative would be: await addDoc(collection(...), { ...payload, ts: serverTimestamp() }))
 }
 
 // One-off read of recent events
@@ -186,11 +196,11 @@ export async function completeJoin(code, supporterName) {
 
   const supRef = doc(collection(db, 'owners', ownerId, 'supporters'));
   await setDoc(supRef, {
-    supporterUid: crypto.randomUUID(), // MVP id (no login yet)
+    supporterUid: crypto?.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2),
     name: supporterName || 'Supporter',
     status: 'Active',
     createdAt: serverTimestamp()
   });
 
   return { ownerId, ownerName };
-}                                                                                                      
+}

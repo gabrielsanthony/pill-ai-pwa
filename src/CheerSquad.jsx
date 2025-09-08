@@ -14,6 +14,7 @@ export default function CheerSquad() {
   const [invite, setInvite] = useState(null); // { code, expiresAt }
   const [joinCode, setJoinCode] = useState("");
   const [status, setStatus] = useState("");
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     // Subscribe to my single Cheer Squad list
@@ -21,47 +22,83 @@ export default function CheerSquad() {
     return () => off && off();
   }, []);
 
-  async function onGenerateCode() {
-    setStatus("Creating code…");
+async function onGenerateCode() {
+  if (busy) return;
+  setBusy(true);
+  setStatus("Creating code…");
+  try {
+    const data = await generateInviteCode();     // { code, expiresAt }
+    setInvite(data);
+    setStatus("Code created.");
     try {
-      const data = await generateInviteCode();
-      setInvite(data); // { code, expiresAt }
-      setStatus("Code created.");
-      try {
-        await navigator.clipboard.writeText(data.code);
-        setStatus("Code created & copied!");
-      } catch {
-        // clipboard might be blocked — it's fine.
-      }
-    } catch (e) {
-      console.error(e);
+      await navigator.clipboard.writeText(data.code);
+      setStatus("Code created & copied!");
+    } catch {
+      /* clipboard may be blocked — ignore */
+    }
+  } catch (e) {
+    console.error(e);
+    const msg = e?.message || "";
+    if (msg.includes("VITE_FUNCTIONS_BASE_URL")) {
+      setStatus("Server not configured (VITE_FUNCTIONS_BASE_URL).");
+    } else if (msg.includes("NO_AUTH_USER")) {
+      setStatus("Not signed in. Refresh the page and try again.");
+    } else {
       setStatus("Could not create code.");
     }
+  } finally {
+    setBusy(false);
   }
+}
 
-  async function onJoinByCode() {
-    const code = joinCode.trim().toUpperCase();
-    if (!code) return;
-    setStatus("Joining…");
-    try {
-      await redeemInviteCode(code);
-      setJoinCode("");
-      setStatus("Joined! You both can cheer each other now.");
-    } catch (e) {
-      console.error(e);
+async function onJoinByCode() {
+  const code = joinCode.trim().toUpperCase();
+  if (!code || busy) return;
+  setBusy(true);
+  setStatus("Joining…");
+  try {
+    await redeemInviteCode(code);
+    setJoinCode("");
+    setStatus("Joined! You both can cheer each other now.");
+  } catch (e) {
+    console.error(e);
+    const msg = e?.message || "";
+    if (msg.includes("VITE_FUNCTIONS_BASE_URL")) {
+      setStatus("Server not configured (VITE_FUNCTIONS_BASE_URL).");
+    } else if (msg.includes("NO_AUTH_USER")) {
+      setStatus("Not signed in. Refresh the page and try again.");
+    } else {
       setStatus("Invalid or expired code.");
     }
+  } finally {
+    setBusy(false);
   }
+}
 
-  async function onRemove(uid) {
-    if (!confirm("Remove this person from BOTH Cheer Squads?")) return;
-    try {
-      await removeCheerMate(uid); // mutual remove on server
-    } catch (e) {
-      console.error(e);
-      alert("Couldn’t remove right now.");
-    }
+async function onRemove(uid) {
+  if (busy) return;
+  if (!confirm("Remove this person from BOTH Cheer Squads?")) return;
+  setBusy(true);
+  try {
+    await removeCheerMate(uid); // server expects { uid } – already handled in utils
+  } catch (e) {
+    console.error(e);
+    alert("Couldn’t remove right now.");
+  } finally {
+    setBusy(false);
   }
+}
+
+function renderExpiry(expiresAt) {
+  if (!expiresAt) return "—";
+  // Handle Firestore Timestamp, epoch seconds/ms, or ISO string
+  const d = expiresAt?.toDate
+    ? expiresAt.toDate()                                   // Firestore Timestamp
+    : typeof expiresAt === "number"
+      ? new Date(expiresAt < 2e10 ? expiresAt * 1000 : expiresAt) // seconds vs ms
+      : new Date(expiresAt);                               // ISO string
+  return isNaN(+d) ? "—" : d.toLocaleString("en-NZ");
+}
 
   return (
     <div className="cheer-squad-section">
@@ -69,7 +106,7 @@ export default function CheerSquad() {
 
       {/* Actions row */}
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", margin: "8px 0 12px" }}>
-        <button className="invite-btn" onClick={onGenerateCode}>
+        <button className="invite-btn" onClick={onGenerateCode} disabled={busy}>
           ➕ Generate Invite Code
         </button>
         <div>
@@ -80,7 +117,7 @@ export default function CheerSquad() {
             onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
             style={{ marginRight: 8, minWidth: 160 }}
           />
-          <button className="send-button" onClick={onJoinByCode}>
+          <button className="send-button" onClick={onJoinByCode} disabled={busy}>
             Join by Code
           </button>
         </div>
@@ -100,7 +137,7 @@ export default function CheerSquad() {
             </button>
           </div>
           <div style={{ fontSize: 12, color: "#555" }}>
-            Expires: {new Date(invite.expiresAt).toLocaleString()}
+            Expires: {renderExpiry(invite.expiresAt)}
           </div>
         </div>
       )}
@@ -118,7 +155,7 @@ export default function CheerSquad() {
               <div className="supporter-meta">
                 <span className="supporter-name">{m.displayName || m.id}</span>
               </div>
-              <button className="link danger" onClick={() => onRemove(m.id)} aria-label={`Remove ${m.displayName || m.id}`}>
+              <button className="link danger" onClick={() => onRemove(m.id)} aria-label={`Remove ${m.displayName || m.id}`} disabled={busy}>
                 Remove
               </button>
             </li>

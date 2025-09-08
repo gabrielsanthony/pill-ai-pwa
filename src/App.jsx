@@ -1144,6 +1144,7 @@ const nextDoseMs = nextDoseTime
                             placeholder={t('askPlaceholder')}
                             value={question}
                             onChange={(e) => setQuestion(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && submitQuestionStreaming(e)}
                         />
                     </div>
 
