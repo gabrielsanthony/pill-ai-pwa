@@ -843,3 +843,31 @@ textarea.answer-box {
   overflow-y: hidden !important;     /* hide the internal scrollbar */
   resize: none;                      /* optional: prevent manual resize handle */
 }
+
+/* Keep the code input + both buttons on one row */
+.join-form {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap;         /* put 'wrap' if you prefer wrapping on small screens */
+}
+
+.join-input {
+  flex: 1;
+  min-width: 160px;
+}
+
+/* Green button for "Set my name" */
+.success-button {
+  background: #16a34a;       /* green-600 */
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  height: 36px;
+  padding: 0 12px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  white-space: nowrap;
+}
+.success-button:hover { background: #15803d; }  /* green-700 */
+.success-button:disabled { opacity: 0.6; cursor: default; }

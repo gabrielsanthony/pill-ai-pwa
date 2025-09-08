@@ -11,10 +11,10 @@ import {
   setMyDisplayName,
 } from "./utils/firebase-db";
 
-const SHOW_SET_NAME = false;
+const SHOW_SET_NAME = true;
 
 
-export default function CheerSquad() {
+export default function CheerSquad({ onEditName = () => {} }) {
   const [members, setMembers] = useState([]);
   const [invite, setInvite] = useState(null); // { code, expiresAt }
   const [joinCode, setJoinCode] = useState("");
@@ -141,41 +141,41 @@ export default function CheerSquad() {
           ➕ Generate Invite Code
         </button>
 
-        <form onSubmit={onJoinByCode}>
-          <input
-  className="form-input"
-  placeholder="Enter code"
-  value={joinCode}
-  onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-  style={{ marginRight: 8, minWidth: 160 }}
-  inputMode="latin"
-  autoCapitalize="characters"
-  pattern="[A-Z0-9]{6}"             // exactly 6 chars
-  maxLength={6}
-  title="Enter the 6-character invite code"
-  aria-label="Invite code"
-/>
-<button className="send-button" type="submit" disabled={busy || !codeValid}>
-  Join by Code
-</button>
-        </form>
+<form className="join-form" onSubmit={onJoinByCode}>
+  <input
+    className="join-input"
+    placeholder="Enter code"
+    value={joinCode}
+    onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+    inputMode="latin"
+    autoCapitalize="characters"
+    pattern="[A-Z0-9]{6}"
+    maxLength={6}
+    title="Enter the 6-character invite code"
+    aria-label="Invite code"
+  />
+  <button className="send-button" type="submit" disabled={busy || !codeValid}>
+    Join by Code
+  </button>
 
-        {/* Quick access to set name */}
-        {SHOW_SET_NAME && (
-        <button
-          className="cancel-button"
-          onClick={async () => {
-            const current = await getMyDisplayName();
-            const nick = prompt("Your display name:", current || "")?.trim();
-            if (nick) {
-              await setMyDisplayName(nick);
-              setStatus("Saved your name.");
-            }
-          }}
-        >
-          Set my name
-        </button>
-        )}
+  {SHOW_SET_NAME && (
+    <button
+      type="button"
+      className="success-button"
+      onClick={async () => {
+        const current = await getMyDisplayName();
+        const nick = prompt("Your display name:", current || "")?.trim();
+        if (nick) {
+          await setMyDisplayName(nick);
+          setStatus("Saved your name.");
+        }
+      }}
+      title="Set or change your display name"
+    >
+      Set my name
+    </button>
+  )}
+</form>
       </div>
 
       {/* Show current invite code (if any) */}

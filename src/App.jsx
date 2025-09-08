@@ -1684,7 +1684,7 @@ try {
     <h3>🤝 Support</h3>
 
     {/* Invite + manage your own Cheer Squad */}
-    <CheerSquad />
+<CheerSquad onEditName={() => setOpenNameOnboarding(true)} />
 
     {/* Master–detail list of people you're cheering */}
     <CheeringHub />
