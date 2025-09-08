@@ -17,7 +17,8 @@ import PrivacyPolicy from './components/PrivacyPolicy.jsx';
 import FAQ from './components/FAQ.jsx';
 import InstallAppButton from './InstallAppButton';
 import IosInstallHint from './IosInstallHint';
-
+import NameOnboardingModal from './components/NameOnboardingModal.jsx';
+import { listenUserProfile, getCurrentUid } from './utils/firebase-db';
 
 // 🚨 Overdue bookkeeping
 const getOverdueMap = () => {
@@ -64,6 +65,10 @@ function App() {
     const [toast, setToast] = useState(null);           // { title, body } or null
     const [toastVisible, setToastVisible] = useState(false);
     const [openModal, setOpenModal] = useState(null); // 'instructions' | 'privacy' | 'faq' | null
+
+    const [openNameOnboarding, setOpenNameOnboarding] = useState(false);
+const [currentDisplayName, setCurrentDisplayName] = useState('');
+
 
 // ----- i18n helpers -----
 const NORMALIZE_LANG = (uiLang) => {
@@ -309,6 +314,31 @@ useEffect(() => {
     try { onMessageUnsubRef.current?.(); } catch {}
     onMessageUnsubRef.current = null;
   };
+}, []);
+
+useEffect(() => {
+  let off = () => {};
+  (async () => {
+    const u = await getCurrentUid();
+    if (!u) return;
+
+    // Listen to profile so we react if name gets set from another tab/device
+    off = listenUserProfile(u.uid, (prof) => {
+      const dn = prof?.displayName || '';
+      setCurrentDisplayName(dn);
+
+      // Only ask once per browser unless they skip & clear later
+      const askedKey = 'askedForDisplayName_v1';
+      const asked = localStorage.getItem(askedKey) === '1';
+
+      if (!dn && !asked) {
+        setOpenNameOnboarding(true);
+        localStorage.setItem(askedKey, '1');
+      }
+    });
+  })();
+
+  return () => { try { off(); } catch {} };
 }, []);
 
 useEffect(() => {
@@ -1688,6 +1718,15 @@ try {
   isOpen={openModal === 'faq'}
   onClose={() => closeModalAndClearHash()}
   language={language}
+/>
+
+<NameOnboardingModal
+  isOpen={openNameOnboarding}
+  onClose={(saved) => {
+    setOpenNameOnboarding(false);
+    // If they saved, we’ll get the new name via listenUserProfile
+  }}
+  defaultName={currentDisplayName}
 />
 
       </div> {/* closes app-container */}

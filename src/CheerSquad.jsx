@@ -11,6 +11,9 @@ import {
   setMyDisplayName,
 } from "./utils/firebase-db";
 
+const SHOW_SET_NAME = false;
+
+
 export default function CheerSquad() {
   const [members, setMembers] = useState([]);
   const [invite, setInvite] = useState(null); // { code, expiresAt }
@@ -29,6 +32,9 @@ export default function CheerSquad() {
       (a.displayName || a.id).localeCompare(b.displayName || b.id)
     );
   }, [members]);
+
+  const codeValid = /^[A-Z0-9]{6}$/.test(joinCode);
+
 
   function renderExpiry(expiresAt) {
     if (!expiresAt) return "—";
@@ -137,23 +143,25 @@ export default function CheerSquad() {
 
         <form onSubmit={onJoinByCode}>
           <input
-            className="form-input"
-            placeholder="Enter code"
-            value={joinCode}
-            onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-            style={{ marginRight: 8, minWidth: 160 }}
-            inputMode="latin"
-            autoCapitalize="characters"
-            pattern="[A-Z0-9]{6,12}"
-            maxLength={12}
-            aria-label="Invite code"
-          />
-          <button className="send-button" type="submit" disabled={busy}>
-            Join by Code
-          </button>
+  className="form-input"
+  placeholder="Enter code"
+  value={joinCode}
+  onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+  style={{ marginRight: 8, minWidth: 160 }}
+  inputMode="latin"
+  autoCapitalize="characters"
+  pattern="[A-Z0-9]{6}"             // exactly 6 chars
+  maxLength={6}
+  title="Enter the 6-character invite code"
+  aria-label="Invite code"
+/>
+<button className="send-button" type="submit" disabled={busy || !codeValid}>
+  Join by Code
+</button>
         </form>
 
         {/* Quick access to set name */}
+        {SHOW_SET_NAME && (
         <button
           className="cancel-button"
           onClick={async () => {
@@ -167,6 +175,7 @@ export default function CheerSquad() {
         >
           Set my name
         </button>
+        )}
       </div>
 
       {/* Show current invite code (if any) */}
