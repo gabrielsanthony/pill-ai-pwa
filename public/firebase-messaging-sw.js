@@ -11,6 +11,12 @@ self.addEventListener('message', (event) => {
   }
 });
 
+// Make this SW PWA-installable without changing FCM behavior
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
+// Older Chrome used to require a fetch handler; harmless no-op:
+self.addEventListener('fetch', () => {});
+
 /* --- Short, encouraging one-liners --- */
 const POSITIVE_LINES = [
   "You’ve got this! 🙌",
@@ -61,7 +67,7 @@ self.addEventListener('push', (event) => {
       body,
       tag,
       data: { tag, kind },
-      icon: '/icon-192x192.png',           // keep or remove if not present
+      icon: '/icons/maskable-192.png',          // keep or remove if not present
       // badge: '/badge-72x72.png',
       requireInteraction: false
     });

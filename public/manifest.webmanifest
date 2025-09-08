@@ -1,15 +1,22 @@
 {
+  "id": "/?source=pwa",
   "name": "Pill-AI",
-  "short_name": "PillAI",
-  "start_url": "/",
+  "short_name": "Pill-AI",
+  "description": "Simple med reminders with a Cheer Squad that keeps you going.",
+  "start_url": "/?utm_source=app",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#ffffff",
   "theme_color": "#ff6600",
   "icons": [
-    {
-      "src": "/favicon.ico",
-      "sizes": "48x48",
-      "type": "image/x-icon"
-    }
-  ]
+    { "src": "/icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/favicon.ico", "sizes": "48x48", "type": "image/x-icon" }
+  ],
+  "shortcuts": [
+    { "name": "Take dose", "short_name": "Dose", "url": "/track" },
+    { "name": "Cheer Squad", "short_name": "Cheer", "url": "/support" }
+  ],
+  "categories": ["health", "medical", "productivity"]
 }

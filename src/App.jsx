@@ -15,6 +15,8 @@ import CheeringHub from './CheeringHub.jsx';
 import HowToPillAI from './components/HowToPillAI.jsx';
 import PrivacyPolicy from './components/PrivacyPolicy.jsx';
 import FAQ from './components/FAQ.jsx';
+import InstallAppButton from './InstallAppButton';
+import IosInstallHint from './IosInstallHint';
 
 
 // 🚨 Overdue bookkeeping
@@ -1039,20 +1041,26 @@ const nextDoseMs = nextDoseTime
     return (
         <div className="main-wrapper">
             <div className="app-container">
-                <header className="header">
-                    <img src={logo} alt="Pill-AI Logo" className="logo" />
-                    <div className="language-selector">
-                        <label htmlFor="language" style={{ fontWeight: "bold", display: "block", marginBottom: "4px" }}>
-                            🌐 {t('languageLabel')}
-                        </label>
-                        <select id="language" value={language} onChange={(e) => setLanguage(e.target.value)}>
-                            <option value="English">English</option>
-                            <option value="Te Reo Māori">Te Reo Māori</option>
-                            <option value="Samoan">Samoan</option>
-                            <option value="Mandarin">Mandarin</option>
-                        </select>
-                    </div>
-                </header>
+ <header className="header">
+  <img src={logo} alt="Pill-AI Logo" className="logo" />
+  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+    <div className="language-selector">
+      <label htmlFor="language" style={{ fontWeight: "bold", display: "block", marginBottom: "4px" }}>
+        🌐 {t('languageLabel')}
+      </label>
+      <select id="language" value={language} onChange={(e) => setLanguage(e.target.value)}>
+        <option value="English">English</option>
+        <option value="Te Reo Māori">Te Reo Māori</option>
+        <option value="Samoan">Samoan</option>
+        <option value="Mandarin">Mandarin</option>
+      </select>
+    </div>
+
+    {/* 👉 Install entry point in the header */}
+    <InstallAppButton />
+  </div>
+</header>
+<IosInstallHint />
 
         {/* 🔔 In‑app toast (appears when the page is visible) */}
         {toast && (
