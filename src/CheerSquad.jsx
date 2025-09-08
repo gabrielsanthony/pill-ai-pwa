@@ -1,294 +1,129 @@
 // src/CheerSquad.jsx
-import { createJoinLink, ensureAnonAuth, listenSupportEvents } from './utils/firebase-db';
-import React, { useState, useEffect } from "react"; // ensure useEffect is imported
+import React, { useEffect, useState } from "react";
 
-const SHOW_DEV_BUTTONS = false;
-
-/* --- helpers --- */
-const maskPhone = (e164 = "") =>
-  e164.replace(/^(\+\d{2})(\d+)(\d{3})$/, (_, cc, mid, tail) => `${cc}${"•".repeat(Math.max(0, mid.length - 1))}${tail}`);
-
-const isE164 = (s = "") => /^\+\d{6,15}$/.test(s.replace(/\s|-/g, ""));
+// 🔗 New utils you added earlier:
+import {
+  listenCheerSquad,       // real-time listener: users/{uid}/cheerSquad/*
+  generateInviteCode,     // GET  /createInviteCode  -> { code, expiresAt }
+  redeemInviteCode,       // POST /redeemInviteCode  -> { ok: true }
+  removeCheerMate         // POST /removeCheerLink   -> { ok: true }
+} from "./utils/firebase-db";
 
 export default function CheerSquad() {
-  // MVP: local state (you can swap to Firestore later)
-  const [supporters, setSupporters] = useState([]);
-  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [members, setMembers] = useState([]);
+  const [invite, setInvite] = useState(null); // { code, expiresAt }
+  const [joinCode, setJoinCode] = useState("");
+  const [status, setStatus] = useState("");
 
-  // 🆕 Support feed for incoming cheers/nudges (MVP local state)
-const [feed, setFeed] = useState([]); // [{id, supporterName, type, message, ts}]
+  useEffect(() => {
+    // Subscribe to my single Cheer Squad list
+    const off = listenCheerSquad(setMembers);
+    return () => off && off();
+  }, []);
 
-  const [ownerId] = useState(localStorage.getItem('ownerId') || 'owner_demo_1'); // fallback for now
-const [inviteLink, setInviteLink] = useState('');
-
-useEffect(() => {
-  if (!ownerId) return;
-  const unsub = listenSupportEvents(ownerId, (rows) => {
-    // show only supporter-to-Mia messages in her feed
-    const visible = rows.filter(r => r.type === 'CHEER' || r.type === 'NUDGE' || r.type === 'CHECKED');
-    setFeed(visible);
-  });
-  return () => unsub?.();
-}, [ownerId]);
-
-
-  // modal form state
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("+64"); // NZ default
-  const [consent, setConsent] = useState(false);
-  const [error, setError] = useState("");
-
-  const resetForm = () => {
-    setName("");
-    setPhone("+64");
-    setConsent(false);
-    setError("");
-  };
-
-  async function addSupporter(e) {
-    e?.preventDefault?.();
-    const trimmedName = name.trim();
-    const cleanedPhone = phone.replace(/\s|-/g, "");
-
-    // client-side validation (mirror the API)
-    if (trimmedName.length < 2 || trimmedName.length > 50) {
-      setError("Please enter a name (2–50 characters).");
-      return;
-    }
-    if (!isE164(cleanedPhone)) {
-      setError("Enter a valid WhatsApp number in E.164 format (e.g., +64XXXXXXXX).");
-      return;
-    }
-    if (!consent) {
-      setError("You must confirm you have permission to invite this person.");
-      return;
-    }
-    if (supporters.some((s) => s.wa_phone === cleanedPhone)) {
-      setError("That number is already in your Cheer Squad.");
-      return;
-    }
-
+  async function onGenerateCode() {
+    setStatus("Creating code…");
     try {
-      const r = await fetch("/api/supporters/add", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: trimmedName, wa_phone: cleanedPhone })
-      });
-      const data = await r.json().catch(() => ({}));
-      if (!r.ok || !data?.ok) throw new Error(data?.error || `HTTP ${r.status}`);
-
-      setSupporters((prev) => [...prev, data.supporter]); // add returned supporter
-      setShowInviteModal(false);
-      resetForm();
-      // Optional UX: alert("✅ Invite sent (demo). They’ll appear as Pending.");
-    } catch (err) {
-      console.error("Invite error:", err);
-      setError("Could not send invite. Please try again.");
+      const data = await generateInviteCode();
+      setInvite(data); // { code, expiresAt }
+      setStatus("Code created.");
+      try {
+        await navigator.clipboard.writeText(data.code);
+        setStatus("Code created & copied!");
+      } catch {
+        // clipboard might be blocked — it's fine.
+      }
+    } catch (e) {
+      console.error(e);
+      setStatus("Could not create code.");
     }
   }
 
-  function removeSupporter(id) {
-    setSupporters((prev) => prev.filter((s) => s.id !== id));
+  async function onJoinByCode() {
+    const code = joinCode.trim().toUpperCase();
+    if (!code) return;
+    setStatus("Joining…");
+    try {
+      await redeemInviteCode(code);
+      setJoinCode("");
+      setStatus("Joined! You both can cheer each other now.");
+    } catch (e) {
+      console.error(e);
+      setStatus("Invalid or expired code.");
+    }
   }
 
-  // 🧪 DEMO helper: simulate an incoming support event and append to feed
-async function simulateEvent({
-  supporterName = 'Alex',
-  type = 'CHEER',
-  message = "You've got this.",
-  presetKey = 'GOT_THIS'
-} = {}) {
-  try {
-    const r = await fetch('/api/supportEvents/add', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ supporterName, type, message, presetKey })
-    });
-    const data = await r.json().catch(() => ({}));
-    if (!r.ok || !data?.ok) throw new Error(data?.error || `HTTP ${r.status}`);
-
-    // prepend newest event
-    setFeed((prev) => [data.event, ...prev]);
-  } catch (e) {
-    console.error('simulateEvent error:', e);
-    alert('Failed to add event.');
+  async function onRemove(uid) {
+    if (!confirm("Remove this person from BOTH Cheer Squads?")) return;
+    try {
+      await removeCheerMate(uid); // mutual remove on server
+    } catch (e) {
+      console.error(e);
+      alert("Couldn’t remove right now.");
+    }
   }
-}
 
   return (
     <div className="cheer-squad-section">
       <h3>👥 Cheer Squad</h3>
 
-      {supporters.length === 0 ? (
-        <p className="empty-state">
-          No Cheer Squad yet. Invite friends or family to cheer you on!
-        </p>
+      {/* Actions row */}
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", margin: "8px 0 12px" }}>
+        <button className="invite-btn" onClick={onGenerateCode}>
+          ➕ Generate Invite Code
+        </button>
+        <div>
+          <input
+            className="form-input"
+            placeholder="Enter code"
+            value={joinCode}
+            onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+            style={{ marginRight: 8, minWidth: 160 }}
+          />
+          <button className="send-button" onClick={onJoinByCode}>
+            Join by Code
+          </button>
+        </div>
+      </div>
+
+      {/* Show current invite code (if any) */}
+      {invite && (
+        <div className="invite-box" style={{ marginBottom: 12 }}>
+          <div>
+            <b>Your Invite Code:</b> <code>{invite.code}</code>{" "}
+            <button
+              className="cancel-button small"
+              onClick={() => navigator.clipboard.writeText(invite.code)}
+              style={{ marginLeft: 6 }}
+            >
+              Copy
+            </button>
+          </div>
+          <div style={{ fontSize: 12, color: "#555" }}>
+            Expires: {new Date(invite.expiresAt).toLocaleString()}
+          </div>
+        </div>
+      )}
+
+      {/* Status note */}
+      {status && <div className="status-note" style={{ marginBottom: 12 }}>{status}</div>}
+
+      {/* Single list */}
+      {members.length === 0 ? (
+        <p className="empty-state">No Cheer Squad yet. Generate a code or join with a code.</p>
       ) : (
         <ul className="supporter-list">
-          {supporters.map((s) => (
-            <li key={s.id} className="supporter-item">
+          {members.map((m) => (
+            <li key={m.id} className="supporter-item squad-row" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div className="supporter-meta">
-                <span className="supporter-name">{s.name}</span>
-                <span className="supporter-phone">{maskPhone(s.wa_phone)}</span>
+                <span className="supporter-name">{m.displayName || m.id}</span>
               </div>
-              <span className={`supporter-status ${s.status.toLowerCase()}`}>{s.status}</span>
-              <button className="remove-btn" onClick={() => removeSupporter(s.id)} aria-label={`Remove ${s.name}`}>
-                ✖
+              <button className="link danger" onClick={() => onRemove(m.id)} aria-label={`Remove ${m.displayName || m.id}`}>
+                Remove
               </button>
             </li>
           ))}
         </ul>
-      )}
-
-      <button className="invite-btn" onClick={() => setShowInviteModal(true)}>
-        ➕ Invite to Cheer Squad
-      </button>
-
-      {ownerId && (
-  <div style={{ marginTop: 10 }}>
-    <button
-      className="cancel-button small"
-      onClick={async () => {
-        try {
-          await ensureAnonAuth(); // make sure we have a uid
-          const ownerName = prompt('Your first name for the invite?', 'Mia') || 'Mia';
-          const { url } = await createJoinLink(ownerId, ownerName);
-          setInviteLink(url);
-          try { await navigator.clipboard.writeText(url); } catch {}
-          alert('Invite link created and copied to clipboard.\nPaste it into SMS/WhatsApp/Email to send to Alex.');
-        } catch (e) {
-          console.error(e);
-          alert('Failed to create join link. Check Firestore rules and console.');
-        }
-      }}
-    >
-      🔗 Create & Copy Join Link
-    </button>
-
-    {inviteLink && (
-      <div style={{ fontSize: 13, marginTop: 6, wordBreak: 'break-all' }}>
-        Link: <code>{inviteLink}</code>
-      </div>
-    )}
-  </div>
-)}
-
-{SHOW_DEV_BUTTONS && (
-  <>
-      {/* ---- DEMO: Streak Cheer button ---- */}
-<div style={{ marginTop: 12 }}>
-  <button
-    className="cancel-button small"
-    onClick={() =>
-      simulateEvent({
-        type: 'CHEER',
-        message: '🏆 7-day streak! Every dose counts.' // customize milestone text
-        // or use presetKey instead of message:
-        // presetKey: 'EVERY_COUNTS'
-      })
-    }
-  >
-    🏆 Streak Cheer
-  </button>
-</div>
-
-{/* ---- DEMO: Overdue Nudge button ---- */}
-<div style={{ marginTop: 8 }}>
-  <button
-    className="cancel-button small"
-    onClick={() =>
-      simulateEvent({
-        type: 'NUDGE',
-        message: 'Overdue dose — quick reminder from your Cheer Squad.'
-      })
-    }
-  >
-    🔔 Send Overdue Nudge
-  </button>
-</div>
-
-<button
-  className="cancel-button small"
-  style={{ marginLeft: 8 }}
-  onClick={() =>
-    simulateEvent({
-      type: 'CHECKED',
-      message: 'Checked-in'
-    })
-  }
->
-  👍 Mark Checked-in
-</button>
-  </>
-)}
-
-{/* ---- Support Feed ---- */}
-<div style={{ marginTop: 16 }}>
-  <h4 style={{ margin: '8px 0' }}>Messages from your Cheer Squad</h4>
-  {feed.length === 0 ? (
-    <p className="empty-state">No messages yet.</p>
-  ) : (
-    <ul className="supporter-list">
-      {feed.map(ev => (
-        <li key={ev.id} className="supporter-item">
-          <div className="supporter-meta">
-            <span className="supporter-name">{ev.supporterName}</span>
-            <span className="supporter-phone" style={{ fontStyle: 'italic', color: '#555' }}>
-              {ev.type === 'CHEER' ? `“${ev.message}”` : ev.message}
-            </span>
-          </div>
-          <span className="supporter-status active">
-            {ev.type === 'CHEER' ? 'Cheer' : ev.type === 'NUDGE' ? 'Nudge' : 'Checked'}
-          </span>
-        </li>
-      ))}
-    </ul>
-  )}
-</div>
-
-      {/* ----- Invite Modal ----- */}
-      {showInviteModal && (
-        <div className="modal-backdrop" onClick={() => setShowInviteModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h4 style={{ marginTop: 0 }}>Invite a Pill-AI Cheer Pal</h4>
-            <form onSubmit={addSupporter}>
-              <label className="form-label">Name</label>
-              <input
-                className="form-input"
-                type="text"
-                placeholder="e.g., Alex"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                autoFocus
-              />
-
-              <label className="form-label">WhatsApp Number (E.164)</label>
-              <input
-                className="form-input"
-                type="tel"
-                placeholder="+64XXXXXXXX"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-              />
-
-              <label className="form-check">
-                <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
-                <span style={{ marginLeft: 8 }}>
-                  I confirm I have permission to invite this person to receive supportive messages.
-                </span>
-              </label>
-
-              {error && <div className="form-error">{error}</div>}
-
-              <div className="modal-actions">
-                <button type="button" className="cancel-button" onClick={() => setShowInviteModal(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="send-button">Send Invite</button>
-              </div>
-            </form>
-          </div>
-        </div>
       )}
     </div>
   );

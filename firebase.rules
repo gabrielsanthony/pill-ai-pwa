@@ -1,0 +1,20 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Server-only (HTTPS functions use Admin SDK and bypass rules)
+    match /inviteCodes/{code} {
+      allow read: if false;
+      allow write: if false;
+    }
+
+    // Single Cheer Squad list: user can read their own list only.
+    // Writes happen only via Cloud Functions, not from the client.
+    match /users/{userId}/cheerSquad/{memberId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false;
+    }
+
+    // ...your existing rules...
+  }
+}
