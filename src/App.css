@@ -871,3 +871,68 @@ textarea.answer-box {
 }
 .success-button:hover { background: #15803d; }  /* green-700 */
 .success-button:disabled { opacity: 0.6; cursor: default; }
+
+/* === Cheer Squad: compact actions row + join popover === */
+.cs-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;          /* wraps nicely on small screens */
+  margin: 6px 0 12px;
+}
+
+/* Compact, same-height buttons */
+.pill-btn {
+  height: 34px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.pill-btn:disabled { opacity: 0.6; cursor: default; }
+.pill-btn:hover { filter: brightness(1.05); }
+
+/* Colors you asked for */
+.pill-blue   { background: #3b82f6; } /* Join by Code */
+.pill-green  { background: #16a34a; } /* Set my name  */
+.pill-orange { background: #f59e0b; } /* Generate code */
+
+.cs-join-anchor { position: relative; display: inline-block; }
+
+/* Mini popover for “Join by code” */
+.cs-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 260px;
+  background: #fff;
+  border: 1px solid #eaeaea;
+  border-radius: 10px;
+  padding: 10px;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.12);
+  z-index: 1000;
+}
+.cs-popover-label {
+  display: block;
+  font-size: 12px;
+  color: #555;
+  margin-bottom: 6px;
+}
+.cs-pop-row { display: flex; gap: 6px; align-items: center; }
+.cs-code-input { height: 34px; }  /* match button height */
+.cs-pop-footer { margin-top: 8px; text-align: right; }
+
+/* Small button utility (used inside popover) */
+.send-button.small,
+.cancel-button.small,
+.success-button.small {
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+}

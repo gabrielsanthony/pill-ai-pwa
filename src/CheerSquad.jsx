@@ -1,25 +1,27 @@
 // src/CheerSquad.jsx
-import React, { useEffect, useMemo, useState } from "react";
-
-// 🔗 New utils you added earlier:
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  listenCheerSquad,       // real-time: users/{uid}/cheerSquad/*
-  generateInviteCode,     // GET  /createInviteCode  -> { code, expiresAt }
-  redeemInviteCode,       // POST /redeemInviteCode  -> { ok: true }
-  removeCheerMate,        // POST /removeCheerLink   -> { ok: true }
+  listenCheerSquad,
+  generateInviteCode,
+  redeemInviteCode,
+  removeCheerMate,
   getMyDisplayName,
   setMyDisplayName,
 } from "./utils/firebase-db";
 
 const SHOW_SET_NAME = true;
 
-
-export default function CheerSquad({ onEditName = () => {} }) {
+export default function CheerSquad() {
   const [members, setMembers] = useState([]);
   const [invite, setInvite] = useState(null); // { code, expiresAt }
   const [joinCode, setJoinCode] = useState("");
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
+
+  // popover state/refs for “Join by Code”
+  const [joinOpen, setJoinOpen] = useState(false);
+  const joinAnchorRef = useRef(null);
+  const popoverRef = useRef(null);
 
   // Live squad list
   useEffect(() => {
@@ -27,14 +29,12 @@ export default function CheerSquad({ onEditName = () => {} }) {
     return () => off && off();
   }, []);
 
-  const ordered = useMemo(() => {
-    return [...members].sort((a, b) =>
-      (a.displayName || a.id).localeCompare(b.displayName || b.id)
-    );
-  }, [members]);
+  const ordered = useMemo(
+    () => [...members].sort((a, b) => (a.displayName || a.id).localeCompare(b.displayName || b.id)),
+    [members]
+  );
 
   const codeValid = /^[A-Z0-9]{6}$/.test(joinCode);
-
 
   function renderExpiry(expiresAt) {
     if (!expiresAt) return "—";
@@ -60,32 +60,24 @@ export default function CheerSquad({ onEditName = () => {} }) {
     setBusy(true);
     setStatus("Creating code…");
     try {
-      // Make sure you have a friendly name saved first
       const name = await ensureNameOnce();
       if (name === null) {
         setStatus("Invite cancelled (no name set).");
         return;
       }
-
       const data = await generateInviteCode(); // { code, expiresAt }
       setInvite(data);
       setStatus("Code created.");
       try {
         await navigator.clipboard.writeText(data.code);
         setStatus("Code created & copied!");
-      } catch {
-        /* clipboard may be blocked — ignore */
-      }
+      } catch {/* clipboard may be blocked */}
     } catch (e) {
       console.error(e);
       const msg = e?.message || "";
-      if (msg.includes("VITE_FUNCTIONS_BASE_URL")) {
-        setStatus("Server not configured (VITE_FUNCTIONS_BASE_URL).");
-      } else if (msg.includes("NO_AUTH_USER")) {
-        setStatus("Not signed in. Refresh and try again.");
-      } else {
-        setStatus("Could not create code.");
-      }
+      if (msg.includes("VITE_FUNCTIONS_BASE_URL")) setStatus("Server not configured (VITE_FUNCTIONS_BASE_URL).");
+      else if (msg.includes("NO_AUTH_USER")) setStatus("Not signed in. Refresh and try again.");
+      else setStatus("Could not create code.");
     } finally {
       setBusy(false);
     }
@@ -100,17 +92,14 @@ export default function CheerSquad({ onEditName = () => {} }) {
     try {
       await redeemInviteCode(code);
       setJoinCode("");
+      setJoinOpen(false); // close mini popup
       setStatus("Joined! You both can cheer each other now.");
     } catch (e) {
       console.error(e);
       const msg = e?.message || "";
-      if (msg.includes("VITE_FUNCTIONS_BASE_URL")) {
-        setStatus("Server not configured (VITE_FUNCTIONS_BASE_URL).");
-      } else if (msg.includes("NO_AUTH_USER")) {
-        setStatus("Not signed in. Refresh and try again.");
-      } else {
-        setStatus("Invalid or expired code.");
-      }
+      if (msg.includes("VITE_FUNCTIONS_BASE_URL")) setStatus("Server not configured (VITE_FUNCTIONS_BASE_URL).");
+      else if (msg.includes("NO_AUTH_USER")) setStatus("Not signed in. Refresh and try again.");
+      else setStatus("Invalid or expired code.");
     } finally {
       setBusy(false);
     }
@@ -122,7 +111,6 @@ export default function CheerSquad({ onEditName = () => {} }) {
     setBusy(true);
     try {
       await removeCheerMate(uid); // mutual unlink
-      // listener updates UI automatically
     } catch (e) {
       console.error(e);
       alert("Couldn’t remove right now.");
@@ -131,76 +119,118 @@ export default function CheerSquad({ onEditName = () => {} }) {
     }
   }
 
+  // Close popover on outside click / Esc; autofocus input when opened
+  useEffect(() => {
+    function onDocClick(e) {
+      if (!joinOpen) return;
+      const p = popoverRef.current;
+      const a = joinAnchorRef.current;
+      if (p && !p.contains(e.target) && a && !a.contains(e.target)) setJoinOpen(false);
+    }
+    function onKey(e) { if (joinOpen && e.key === "Escape") setJoinOpen(false); }
+    document.addEventListener("mousedown", onDocClick);
+    document.addEventListener("keydown", onKey);
+    if (joinOpen) setTimeout(() => popoverRef.current?.querySelector("input")?.focus(), 0);
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [joinOpen]);
+
   return (
     <div className="cheer-squad-section">
       <h3>👥 Cheer Squad</h3>
 
-      {/* Actions row */}
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", margin: "8px 0 12px" }}>
-        <button className="invite-btn" onClick={onGenerateCode} disabled={busy}>
-          ➕ Generate Invite Code
+      {/* Compact, single action row */}
+      <div className="cs-actions-row">
+        {SHOW_SET_NAME && (
+          <button
+            type="button"
+            className="pill-btn pill-green"
+            onClick={async () => {
+              const current = await getMyDisplayName();
+              const nick = prompt("Your display name:", current || "")?.trim();
+              if (nick) {
+                await setMyDisplayName(nick);
+                setStatus("Saved your name.");
+              }
+            }}
+            title="Set or change your display name"
+            disabled={busy}
+          >
+            Set my name
+          </button>
+        )}
+
+        <button className="pill-btn pill-orange" onClick={onGenerateCode} disabled={busy}>
+          Generate Invite Code
         </button>
 
-<form className="join-form" onSubmit={onJoinByCode}>
-  <input
-    className="join-input"
-    placeholder="Enter code"
-    value={joinCode}
-    onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-    inputMode="latin"
-    autoCapitalize="characters"
-    pattern="[A-Z0-9]{6}"
-    maxLength={6}
-    title="Enter the 6-character invite code"
-    aria-label="Invite code"
-  />
-  <button className="send-button" type="submit" disabled={busy || !codeValid}>
-    Join by Code
-  </button>
+        <span className="cs-join-anchor" ref={joinAnchorRef}>
+          <button
+            type="button"
+            className="pill-btn pill-blue"
+            onClick={() => setJoinOpen((v) => !v)}
+            disabled={busy}
+            aria-haspopup="dialog"
+            aria-expanded={joinOpen ? "true" : "false"}
+          >
+            Join by Code
+          </button>
 
-  {SHOW_SET_NAME && (
-    <button
-      type="button"
-      className="success-button"
-      onClick={async () => {
-        const current = await getMyDisplayName();
-        const nick = prompt("Your display name:", current || "")?.trim();
-        if (nick) {
-          await setMyDisplayName(nick);
-          setStatus("Saved your name.");
-        }
-      }}
-      title="Set or change your display name"
-    >
-      Set my name
-    </button>
-  )}
-</form>
+          {joinOpen && (
+            <div className="cs-popover" ref={popoverRef} role="dialog" aria-label="Join by code">
+              <form onSubmit={onJoinByCode}>
+                <label className="cs-popover-label">Invite code</label>
+                <div className="cs-pop-row">
+                  <input
+                    className="form-input cs-code-input"
+                    placeholder="ABC123"
+                    value={joinCode}
+                    onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                    inputMode="latin"
+                    autoCapitalize="characters"
+                    pattern="[A-Z0-9]{6}"
+                    maxLength={6}
+                    title="Enter the 6-character invite code"
+                    aria-label="Invite code"
+                  />
+                  <button className="send-button small" type="submit" disabled={busy || !codeValid}>
+                    Join
+                  </button>
+                </div>
+                <div className="cs-pop-footer">
+                  <button type="button" className="cancel-button small" onClick={() => setJoinOpen(false)}>
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+        </span>
       </div>
 
-      {/* Show current invite code (if any) */}
+      {/* Current invite code (if any) */}
       {invite && (
         <div className="invite-box" style={{ marginBottom: 12 }}>
           <div>
             <b>Your Invite Code:</b> <code>{invite.code}</code>{" "}
             <button
-              className="cancel-button small"
+              className="success-button small"
               onClick={() => navigator.clipboard.writeText(invite.code)}
               style={{ marginLeft: 6 }}
             >
               Copy
             </button>
           </div>
-          <div style={{ fontSize: 12, color: "#555" }}>
-            Expires: {renderExpiry(invite.expiresAt)}
-          </div>
+          <div style={{ fontSize: 12, color: "#555" }}>Expires: {renderExpiry(invite.expiresAt)}</div>
         </div>
       )}
 
       {/* Status note */}
       {status && <div className="status-note" style={{ marginBottom: 12 }}>{status}</div>}
 
-      {/* Single list (nicknames) */}
+      {/* Squad list */}
       {ordered.length === 0 ? (
         <p className="empty-state">No Cheer Squad yet. Generate a code or join with a code.</p>
       ) : (
@@ -213,9 +243,7 @@ export default function CheerSquad({ onEditName = () => {} }) {
             >
               <div className="supporter-meta">
                 <span className="supporter-name">{m.displayName || "Friend"}</span>
-                <span className="supporter-phone" style={{ color: "#666", marginLeft: 8 }}>
-                  linked
-                </span>
+                <span className="supporter-phone" style={{ color: "#666", marginLeft: 8 }}>linked</span>
               </div>
               <button
                 className="link danger"
