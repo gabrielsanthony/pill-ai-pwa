@@ -319,15 +319,14 @@ useEffect(() => {
 useEffect(() => {
   let off = () => {};
   (async () => {
-    const u = await getCurrentUid();
-    if (!u) return;
+    const uid = await getCurrentUid();   // ← this is a string
+    if (!uid) return;
 
     // Listen to profile so we react if name gets set from another tab/device
-    off = listenUserProfile(u.uid, (prof) => {
+    off = listenUserProfile(uid, (prof) => {
       const dn = prof?.displayName || '';
       setCurrentDisplayName(dn);
 
-      // Only ask once per browser unless they skip & clear later
       const askedKey = 'askedForDisplayName_v1';
       const asked = localStorage.getItem(askedKey) === '1';
 
