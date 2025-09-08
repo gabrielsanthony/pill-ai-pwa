@@ -1,21 +1,27 @@
 // src/CheeringHub.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import { listenCheerSquad, listenSupportEvents } from "./utils/firebase-db";
+import {
+  listenCheerSquad,
+  listenSupportEvents,
+  addSupportEvent,
+  getMyDisplayName,
+  getCurrentUid,
+} from "./utils/firebase-db";
 
 /**
  * CheeringHub = Messaging/feed view only.
  * - Reads your Cheer Squad (for a simple "send to" dropdown)
  * - Reads your incoming support feed (CHEER / NUDGE / CHECKED)
- * - Lets you send a quick Cheer/Nudge (optional)
+ * - Lets you send a quick Cheer/Nudge
  *
- * All invite/join/remove logic has moved to CheerSquad.jsx.
+ * Invite/join/remove lives in CheerSquad.jsx.
  */
 
 export default function CheeringHub() {
-  const [members, setMembers] = useState([]); // [{id, displayName}]
+  const [members, setMembers] = useState([]); // [{id, name}]
   const [feed, setFeed] = useState([]);      // [{id, supporterName, type, message, ts}]
 
-  // quick-send state (optional)
+  // quick-send state
   const [toUid, setToUid] = useState("");
   const [type, setType] = useState("CHEER"); // CHEER | NUDGE | CHECKED
   const [message, setMessage] = useState("You've got this!");
@@ -24,28 +30,34 @@ export default function CheeringHub() {
   // 1) Subscribe to my Cheer Squad list (to populate the "send to" dropdown)
   useEffect(() => {
     const off = listenCheerSquad((rows) => {
-      const list = rows.map((r) => ({ id: r.id, name: r.displayName || r.id }));
+      const list = rows.map((r) => ({ id: r.id, name: r.displayName || "Friend" }));
       setMembers(list);
-      // choose first member by default if none selected
       if (!toUid && list.length) setToUid(list[0].id);
     });
     return () => off && off();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 2) Subscribe to my incoming support events feed
+  // 2) Subscribe to my incoming support events feed (for ME = my uid)
   useEffect(() => {
-    const off = listenSupportEvents((rows) => {
-      // keep just the 3 recognised types
-      const visible = rows
-        .filter((r) => r.type === "CHEER" || r.type === "NUDGE" || r.type === "CHECKED")
-        .sort((a, b) => (b.ts || 0) - (a.ts || 0));
-      setFeed(visible);
-    });
+    let off = () => {};
+    (async () => {
+      const ownerId = await getCurrentUid();
+      if (!ownerId) return;
+      off = listenSupportEvents(ownerId, (rows) => {
+        const visible = rows
+          .filter((r) => r.type === "CHEER" || r.type === "NUDGE" || r.type === "CHECKED")
+          .sort(
+            (a, b) =>
+              (b.ts?.toMillis?.() || 0) - (a.ts?.toMillis?.() || 0)
+          );
+        setFeed(visible);
+      });
+    })();
     return () => off && off();
   }, []);
 
-  // (Optional) Quick send to a squad member using your existing API
+  // Quick send to a squad member using Firestore helper
   async function sendSupportEvent(e) {
     e?.preventDefault?.();
     if (!toUid) {
@@ -54,19 +66,14 @@ export default function CheeringHub() {
     }
     try {
       setStatus("Sending…");
-      const res = await fetch("/api/supportEvents/add", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          toUid,
-          type,
-          message,
-        }),
+      const myName = (await getMyDisplayName()) || "Friend";
+      await addSupportEvent(toUid, {
+        type,
+        message,
+        supporterName: myName, // so recipient sees a friendly name in their feed
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data?.ok) throw new Error(data?.error || `HTTP ${res.status}`);
       setStatus("Sent!");
-      // no need to manually push to feed; listener will update if you're the recipient
+      setMessage("You've got this!");
     } catch (err) {
       console.error("sendSupportEvent error:", err);
       setStatus("Failed to send.");
@@ -79,7 +86,7 @@ export default function CheeringHub() {
     <section className="cheer-hub-card">
       <h3>📣 Cheering Hub</h3>
 
-      {/* --- Quick Send (optional) --- */}
+      {/* --- Quick Send --- */}
       <form onSubmit={sendSupportEvent} className="quick-send" style={{ margin: "8px 0 16px" }}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <select

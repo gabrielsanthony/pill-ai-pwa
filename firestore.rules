@@ -8,13 +8,36 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Single Cheer Squad list: user can read their own list only.
-    // Writes happen only via Cloud Functions, not from the client.
-    match /users/{userId}/cheerSquad/{memberId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
-      allow write: if false;
+    // User profile + Single Cheer Squad list
+    match /users/{userId} {
+      // Let the user read/write their own profile (for displayName, etc.)
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      // One-way list that stores mutual links. Cloud Functions write these.
+      match /cheerSquad/{memberId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow write: if false;  // clients never write here
+      }
     }
 
-    // ...your existing rules...
+    // Support events feed for the medication owner
+    match /owners/{ownerId}/supportEvents/{eventId} {
+      // Owner can read their feed
+      allow read: if request.auth != null && request.auth.uid == ownerId;
+
+      // A supporter can create an event in the owner's feed only if
+      // they appear in the owner's cheerSquad (i.e., are linked)
+      allow create: if request.auth != null
+        && exists(/databases/$(database)/documents/users/$(ownerId)/cheerSquad/$(request.auth.uid));
+
+      // Nobody updates or deletes events
+      allow update, delete: if false;
+    }
+
+    // --- Optional (legacy demo): if you still use client-side joinLinks ---
+    // match /joinCodes/{code} {
+    //   allow read: if false;
+    //   allow write: if request.auth != null; // or tighten as needed
+    // }
   }
 }

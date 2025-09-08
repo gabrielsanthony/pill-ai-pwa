@@ -204,3 +204,38 @@ export async function completeJoin(code, supporterName) {
 
   return { ownerId, ownerName };
 }
+
+// Live-read my user doc (displayName, etc.)
+export function listenUserProfile(uid, cb) {
+  if (!uid) return () => {};
+  const ref = doc(db, 'users', uid);
+  return onSnapshot(ref, (snap) => {
+    cb(snap.exists() ? { uid, ...snap.data() } : { uid });
+  }, (err) => {
+    console.error('listenUserProfile error:', err);
+    cb({ uid });
+  });
+}
+
+// Save my display name (also cache locally for instant boot)
+export async function setMyDisplayName(displayName) {
+  await ensureAnonAuth();
+  const uid = auth.currentUser?.uid;
+  if (!uid) throw new Error('No auth user');
+  const name = String(displayName || '').slice(0, 40);
+  await setDoc(doc(db, 'users', uid), {
+    displayName: name,
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+  try { localStorage.setItem('myDisplayName', name); } catch {}
+}
+
+// Read cached name (fallback to Firestore on first live load via listener)
+export async function getMyDisplayName(uid) {
+  const cached = localStorage.getItem('myDisplayName');
+  if (cached) return cached;
+  const id = uid || auth.currentUser?.uid;
+  if (!id) return null;
+  const snap = await getDoc(doc(db, 'users', id));
+  return snap.exists() ? (snap.data().displayName || null) : null;
+}
