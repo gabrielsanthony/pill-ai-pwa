@@ -19,6 +19,7 @@ import InstallAppButton from './InstallAppButton';
 import IosInstallHint from './IosInstallHint';
 import NameOnboardingModal from './components/NameOnboardingModal.jsx';
 import { listenUserProfile, getCurrentUid } from './utils/firebase-db';
+import { getAuth, onAuthStateChanged, signInAnonymously } from 'firebase/auth';
 
 // 🚨 Overdue bookkeeping
 const getOverdueMap = () => {
@@ -317,13 +318,13 @@ useEffect(() => {
 }, []);
 
 useEffect(() => {
-  let off = () => {};
-  (async () => {
-    const uid = await getCurrentUid();   // ← this is a string
-    if (!uid) return;
+  const auth = getAuth();
+  let unsubscribeProfile = null;
 
-    // Listen to profile so we react if name gets set from another tab/device
-    off = listenUserProfile(uid, (prof) => {
+  const attachProfileListener = (uid) => {
+    // clean any previous listener
+    try { unsubscribeProfile?.(); } catch {}
+    unsubscribeProfile = listenUserProfile(uid, (prof) => {
       const dn = prof?.displayName || '';
       setCurrentDisplayName(dn);
 
@@ -335,10 +336,36 @@ useEffect(() => {
         localStorage.setItem(askedKey, '1');
       }
     });
-  })();
+  };
 
-  return () => { try { off(); } catch {} };
+  const unsubAuth = onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+      // ensure an anon user exists so we have a place to store the name
+      try { await signInAnonymously(auth); } catch (e) {
+        console.warn('Anon sign-in failed:', e);
+      }
+      return;
+    }
+    attachProfileListener(user.uid);
+  });
+
+  return () => {
+    try { unsubAuth(); } catch {}
+    try { unsubscribeProfile?.(); } catch {}
+  };
 }, []);
+
+useEffect(() => {
+  const askedKey = 'askedForDisplayName_v1';
+  if (currentDisplayName || localStorage.getItem(askedKey) === '1') return;
+
+  const id = setTimeout(() => {
+    setOpenNameOnboarding(true);
+    localStorage.setItem(askedKey, '1');
+  }, 4000); // open after 4s if profile hasn’t loaded
+
+  return () => clearTimeout(id);
+}, [currentDisplayName]);
 
 useEffect(() => {
   (async () => {
