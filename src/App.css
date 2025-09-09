@@ -60,12 +60,24 @@ html, body { max-width: 100%; overflow-x: hidden; }
   margin-bottom: 1.5rem;
 }
 
-input[type="text"], select {
+/* Style both the single-line input and the Ask textarea */
+input[type="text"], select, textarea.question-input {
   padding: 0.8rem;
-  font-size: 1rem;
+  font-size: 1rem;           /* 16px-ish to avoid iOS zoom */
   border: 2px solid #ccc;
   border-radius: 6px;
   margin-top: 0.5rem;
+}
+
+/* Ask box: auto-resizing textarea */
+.question-textarea {
+  width: 100%;
+  min-height: 44px;       /* touch-friendly */
+  max-height: 40vh;       /* stop it getting too tall */
+  overflow-y: auto;       /* scroll only when very long */
+  line-height: 1.4;
+  resize: none;           /* we control size in JS */
+  box-sizing: border-box;
 }
 
 .send-button {
@@ -78,6 +90,12 @@ input[type="text"], select {
   margin-top: 1rem;
   cursor: pointer;
   transition: background 0.2s ease-in-out;
+}
+
+/* Keep Send neatly spaced under the Ask textarea */
+.ask-card .send-button {
+  margin-top: 8px;
+  align-self: flex-end;
 }
 
 .send-button:hover {

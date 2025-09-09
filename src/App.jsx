@@ -223,6 +223,18 @@ const BCP47 = {
         const chatAbortRef = useRef(null); // aborts an in-flight chat stream
         const answerBoxRef = useRef(null);
 
+        // NEW: textarea ref + autosize
+const questionRef = useRef(null);
+
+function autosizeTextarea(el) {
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+}
+
+// Keep it sized when the text or UI language changes
+useEffect(() => { autosizeTextarea(questionRef.current); }, [question, language]);
+
         // 🔔 Gentle periodic beep while the model is thinking
 const thinkingBeepRef = useRef({ ctx: null, intervalId: null });
 
@@ -1171,15 +1183,23 @@ const nextDoseMs = nextDoseTime
                     <h2 className="card-title">💬 {t('medicinesChat')}</h2>
 
                     <div className="form-group">
-                        <input
-                            type="text"
-                            className="question-input"
-                            placeholder={t('askPlaceholder')}
-                            value={question}
-                            onChange={(e) => setQuestion(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && submitQuestionStreaming(e)}
-                        />
-                    </div>
+  <textarea
+    ref={questionRef}
+    className="question-input question-textarea"
+    placeholder={t('askPlaceholder')}
+    value={question}
+    onChange={(e) => setQuestion(e.target.value)}
+    rows={1}
+    aria-label="Ask a medication question"
+    onInput={(e) => autosizeTextarea(e.currentTarget)}
+    onKeyDown={(e) => {
+      // Enter = new line; Ctrl/Cmd+Enter = submit
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        submitQuestionStreaming(e);
+      }
+    }}
+  />
+</div>
 
 <button className="send-button" type="submit" disabled={loading}>
   {loading ? t('thinking') : t('send')}
