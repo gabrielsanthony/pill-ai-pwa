@@ -90,7 +90,7 @@ const labels = {
     tabVoice: 'Voice',
     tabLearn: 'Learn',
     tabEarn: 'Earn',
-    tabSupport: 'Support',
+    tabSupport: 'Cheer',
     languageLabel: 'Language:',
     medicinesChat: 'MEDICINES CHAT',
     askPlaceholder: '💡 Ask a medication related question',
@@ -1681,7 +1681,7 @@ try {
 
  {activeTab === 'support' && (
   <div className="card support-card">
-    <h3>🤝 Support</h3>
+    <h3>🤝 Cheer</h3>
 
     {/* Invite + manage your own Cheer Squad */}
 <CheerSquad onEditName={() => setOpenNameOnboarding(true)} />

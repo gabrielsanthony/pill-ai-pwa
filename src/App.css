@@ -696,6 +696,18 @@ select {
   margin-top: 14px;
 }
 
+/* --- Modal buttons: prevent wrap + give a sane minimum width --- */
+.modal .btn,
+.modal .send-button {
+  display: inline-flex;        /* center label nicely */
+  align-items: center;
+  justify-content: center;
+  height: 36px;                /* match your input height */
+  padding: 0 14px;
+  min-width: 84px;             /* <- keeps "Join" on one line */
+  white-space: nowrap;         /* <- no line breaks */
+}
+
 .cancel-button.small {
   padding: 6px 10px;
   font-size: 0.9rem;

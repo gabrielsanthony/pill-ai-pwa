@@ -23,6 +23,12 @@ export default function CheerSquad() {
   const joinAnchorRef = useRef(null);
   const popoverRef = useRef(null);
 
+  // 👇 NEW: popover state/refs for “Set my name”
+  const [nameOpen, setNameOpen] = useState(false);
+  const [tempName, setTempName] = useState('');
+  const nameAnchorRef = useRef(null);
+  const namePopoverRef = useRef(null);
+
   // Live squad list
   useEffect(() => {
     const off = listenCheerSquad((rows) => setMembers(rows));
@@ -71,7 +77,7 @@ export default function CheerSquad() {
       try {
         await navigator.clipboard.writeText(data.code);
         setStatus("Code created & copied!");
-      } catch {/* clipboard may be blocked */}
+      } catch {/* clipboard may be blocked */ }
     } catch (e) {
       console.error(e);
       const msg = e?.message || "";
@@ -139,27 +145,67 @@ export default function CheerSquad() {
 
   return (
     <div className="cheer-squad-section">
-      <h3>👥 Cheer Squad</h3>
 
       {/* Compact, single action row */}
       <div className="cs-actions-row">
         {SHOW_SET_NAME && (
-          <button
-            type="button"
-            className="pill-btn pill-green"
-            onClick={async () => {
-              const current = await getMyDisplayName();
-              const nick = prompt("Your display name:", current || "")?.trim();
-              if (nick) {
-                await setMyDisplayName(nick);
-                setStatus("Saved your name.");
-              }
-            }}
-            title="Set or change your display name"
-            disabled={busy}
-          >
-            Set my name
-          </button>
+          <span className="cs-join-anchor" ref={nameAnchorRef}>
+            <button
+              type="button"
+              className="pill-btn pill-green"
+              onClick={async () => {
+                const current = (await getMyDisplayName()) || '';
+                setTempName(current);
+                setNameOpen((v) => !v);
+              }}
+              title="Set or change your display name"
+              disabled={busy}
+            >
+              Set my name
+            </button>
+
+            {nameOpen && (
+              <div className="cs-popover" ref={namePopoverRef} role="dialog" aria-label="Set your display name">
+                <label className="cs-popover-label">Display name</label>
+                <div className="cs-pop-row">
+                  <input
+                    className="form-input cs-code-input"
+                    placeholder="e.g. Alex"
+                    value={tempName}
+                    onChange={(e) => setTempName(e.target.value)}
+                    aria-label="Display name"
+                  />
+                  <button
+                    type="button"
+                    className="send-button small"
+                    onClick={async () => {
+                      const nick = (tempName || '').trim();
+                      if (!nick) { setStatus('Please enter a name.'); return; }
+                      try {
+                        setBusy(true);
+                        await setMyDisplayName(nick);
+                        setStatus('Saved your name.');
+                        setNameOpen(false);
+                      } catch (e) {
+                        console.error(e);
+                        setStatus('Could not save name right now.');
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                    disabled={busy || !tempName.trim()}
+                  >
+                    Save
+                  </button>
+                </div>
+                <div className="cs-pop-footer">
+                  <button type="button" className="cancel-button small" onClick={() => setNameOpen(false)}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </span>
         )}
 
         <button className="pill-btn pill-orange" onClick={onGenerateCode} disabled={busy}>
