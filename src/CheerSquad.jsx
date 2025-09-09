@@ -161,7 +161,7 @@ export default function CheerSquad() {
               title="Set or change your display name"
               disabled={busy}
             >
-              Set my name
+              Set Name
             </button>
 
             {nameOpen && (
@@ -209,7 +209,7 @@ export default function CheerSquad() {
         )}
 
         <button className="pill-btn pill-orange" onClick={onGenerateCode} disabled={busy}>
-          Generate Invite Code
+          Generate Invite
         </button>
 
         <span className="cs-join-anchor" ref={joinAnchorRef}>
