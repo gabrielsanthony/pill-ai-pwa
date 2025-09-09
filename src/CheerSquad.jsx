@@ -209,7 +209,7 @@ export default function CheerSquad() {
         )}
 
         <button className="pill-btn pill-orange" onClick={onGenerateCode} disabled={busy}>
-          Generate Invite
+          Invite
         </button>
 
         <span className="cs-join-anchor" ref={joinAnchorRef}>
@@ -221,7 +221,7 @@ export default function CheerSquad() {
             aria-haspopup="dialog"
             aria-expanded={joinOpen ? "true" : "false"}
           >
-            Join by Code
+            Join
           </button>
 
           {joinOpen && (
