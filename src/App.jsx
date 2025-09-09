@@ -1426,7 +1426,7 @@ try {
 
                 {/* ✅ Progress Tracking UI */}
                 <div id="progress-section" className="progress-section">
-                    <h3>📈 {t('trackYourMedication')}</h3>
+                    <h3> {t('trackYourMedication')}</h3>
 
                     {!showReminderForm && (
                         <button
@@ -1442,7 +1442,7 @@ try {
                             }}
                             style={{ marginBottom: '10px' }}
                         >
-                            ➕ {t('setReminder')}
+                            {t('setReminder')}
                         </button>
                     )}
 
