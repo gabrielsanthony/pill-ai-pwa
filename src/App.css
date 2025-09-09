@@ -948,3 +948,45 @@ textarea.answer-box {
   border-radius: 6px;
   font-size: 13px;
 }
+
+/* --- Popover positioning tweaks --- */
+
+/* Default: anchor element that the popover is positioned against */
+.cs-join-anchor { position: relative; display: inline-block; }
+
+/* The popover itself (you likely already have something similar; keep these values) */
+.cs-popover {
+  position: absolute;
+  top: 44px;
+  right: 0;                          /* default: align to the anchor's right edge */
+  width: min(360px, 92vw);
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  padding: 12px;
+  box-shadow: 0 12px 34px rgba(0,0,0,0.18);
+  z-index: 1000;
+}
+
+/* For the name popover only: align to LEFT so it doesn't get cut off near the edge */
+.cs-join-anchor.cs-left .cs-popover {
+  left: 0;
+  right: auto;
+}
+
+/* Row inside the popover (input + button) */
+.cs-pop-row { display: flex; align-items: center; gap: 10px; }
+
+/* Make the code/name input and the small buttons the same height */
+.cs-code-input { flex: 1; height: 36px; }
+
+/* Ensure small action buttons don't wrap and have enough width */
+.send-button.small,
+.cancel-button.small {
+  height: 36px;
+  padding: 0 14px;                 /* gives the text breathing room */
+  font-size: 0.95rem;
+  line-height: 1;
+  white-space: nowrap;             /* prevents "Join" / "Save" from breaking onto 2 lines */
+  min-width: 72px;                 /* guarantee a sensible minimum width */
+}

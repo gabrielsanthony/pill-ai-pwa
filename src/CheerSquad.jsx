@@ -149,8 +149,8 @@ export default function CheerSquad() {
       {/* Compact, single action row */}
       <div className="cs-actions-row">
         {SHOW_SET_NAME && (
-          <span className="cs-join-anchor" ref={nameAnchorRef}>
-            <button
+<span className="cs-join-anchor cs-left" ref={nameAnchorRef}>            
+  <button
               type="button"
               className="pill-btn pill-green"
               onClick={async () => {
