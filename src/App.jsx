@@ -1149,29 +1149,6 @@ const nextDoseMs = nextDoseTime
         </div>
         )}
 
-{/* DEV: quick toast test (remove later) */}
-<button
-  type="button"
-  style={{
-    position: 'fixed',
-    right: 12,
-    bottom: 12,
-    padding: '8px 12px',
-    border: 'none',
-    borderRadius: 8,
-    cursor: 'pointer',
-    opacity: 0.6,
-    boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-    zIndex: 9999
-  }}
-  onClick={() => showToast('Test Toast', 'If you see this, foreground UI works.')}
-  aria-label="Show test toast"
-  title="Show test toast"
->
-  ▶️ Test Toast
-</button>
-
-
                 <div className="tab-bar">
                      <button className={activeTab === 'ask' ? 'tab active' : 'tab'} onClick={() => goToTab('ask')}>💬 {t('tabChat')}</button>
                         <button className={activeTab === 'track' ? 'tab active' : 'tab'} onClick={() => goToTab('track')}>💊 {t('tabTrack')}</button>
