@@ -1272,15 +1272,18 @@ const nextDoseMs = nextDoseTime
                         </div>
 
                         <div className="form-group">
-<label className="inline-check">
-  <input
-    type="checkbox"
-    checked={isLongTerm}
-    onChange={() => setIsLongTerm(!isLongTerm)}
-  />
-  <span>📆 Long Term Medication</span>
-</label>
-                        </div>
+  <label className="inline-check one-line">
+    <input
+      type="checkbox"
+      checked={isLongTerm}
+      onChange={() => setIsLongTerm(!isLongTerm)}
+    />
+    <span className="check-label">
+      <span className="check-emoji" aria-hidden="true">📆</span>
+      Long Term 
+    </span>
+  </label>
+</div>
 
                         {!isLongTerm && (
                             <div className="form-group">

@@ -452,7 +452,7 @@ select {
   width: 100%;
   max-width: 640px;
   margin: 0 auto;
-  overflow: hidden;
+  overflow: visible;
   position: relative;
   padding-inline: 12px;
   /* ensure the frame doesn’t collapse between different cards */
@@ -1026,3 +1026,10 @@ textarea.answer-box {
 .reminder-form .form-group {
   align-items: flex-start;
 }
+
+/* Force the checkbox row to stay on one line */
+.one-line,
+.inline-check .check-label { white-space: nowrap; }
+
+/* Small spacing polish */
+.inline-check .check-emoji { margin-right: 4px; display: inline-block; }
