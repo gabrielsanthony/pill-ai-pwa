@@ -1,5 +1,5 @@
 // src/CheerSquad.jsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, useLayoutEffect } from "react";
 import {
   listenCheerSquad,
   generateInviteCode,
