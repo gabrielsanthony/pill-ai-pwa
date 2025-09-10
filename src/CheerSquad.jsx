@@ -29,6 +29,62 @@ export default function CheerSquad() {
   const nameAnchorRef = useRef(null);
   const namePopoverRef = useRef(null);
 
+// --- Keep popovers on-screen (no left/right cutoff) ---
+function placePopover(anchorEl, popEl, align = 'right') {
+  if (!anchorEl || !popEl) return;
+
+  const margin = 12;                // gap from viewport edges
+  const a = anchorEl.getBoundingClientRect();
+
+  // Temporarily show to measure size (in case it was display:none earlier)
+  popEl.style.left = '0px';
+  popEl.style.top  = '0px';
+  const p = popEl.getBoundingClientRect();
+
+  // Prefer aligning to the right edge of the anchor (like your old UI)
+  let left = (align === 'left') ? a.left : (a.right - p.width);
+
+  // Clamp within the viewport so it can't go off the left/right
+  left = Math.max(margin, Math.min(left, window.innerWidth - margin - p.width));
+
+  // Place just under the anchor; clamp to bottom as well
+  let top = a.bottom + 8;
+  top = Math.min(top, window.innerHeight - margin - p.height);
+
+  popEl.style.left = `${left}px`;
+  popEl.style.top  = `${top}px`;
+}
+
+// Recompute position when JOIN popover opens / window changes
+useLayoutEffect(() => {
+  if (!joinOpen) return;
+
+  const handler = () => placePopover(joinAnchorRef.current, popoverRef.current, 'right');
+  handler();
+
+  window.addEventListener('resize', handler);
+  window.addEventListener('scroll', handler, true);
+  return () => {
+    window.removeEventListener('resize', handler);
+    window.removeEventListener('scroll', handler, true);
+  };
+}, [joinOpen]);
+
+// Recompute position when NAME popover opens / window changes
+useLayoutEffect(() => {
+  if (!nameOpen) return;
+
+  const handler = () => placePopover(nameAnchorRef.current, namePopoverRef.current, 'left');
+  handler();
+
+  window.addEventListener('resize', handler);
+  window.addEventListener('scroll', handler, true);
+  return () => {
+    window.removeEventListener('resize', handler);
+    window.removeEventListener('scroll', handler, true);
+  };
+}, [nameOpen]);
+
   // Live squad list
   useEffect(() => {
     const off = listenCheerSquad((rows) => setMembers(rows));

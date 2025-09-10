@@ -1033,3 +1033,13 @@ textarea.answer-box {
 
 /* Small spacing polish */
 .inline-check .check-emoji { margin-right: 4px; display: inline-block; }
+
+/* Popover: render above cards and relative to the viewport */
+.cs-popover {
+  position: fixed !important;  /* << from absolute → fixed */
+  z-index: 2000;                /* above cards */
+  max-width: min(360px, 92vw);
+}
+
+/* If a popover exists, don't clip it at the viewport frame */
+.card-viewport:has(.cs-popover) { overflow: visible; }
