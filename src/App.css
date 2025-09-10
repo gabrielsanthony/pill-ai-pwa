@@ -1008,3 +1008,21 @@ textarea.answer-box {
   white-space: nowrap;             /* prevents "Join" / "Save" from breaking onto 2 lines */
   min-width: 72px;                 /* guarantee a sensible minimum width */
 }
+
+/* Keep checkbox and label text on one line, nicely aligned */
+.inline-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.2;
+}
+
+/* Remove weird default spacing on some browsers */
+.inline-check input[type="checkbox"] {
+  margin: 0;
+}
+
+/* Since .form-group is column, let the inline label sit flush left */
+.reminder-form .form-group {
+  align-items: flex-start;
+}

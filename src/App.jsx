@@ -1272,14 +1272,14 @@ const nextDoseMs = nextDoseTime
                         </div>
 
                         <div className="form-group">
-                            <label>
-                                <input
-                                    type="checkbox"
-                                    checked={isLongTerm}
-                                    onChange={() => setIsLongTerm(!isLongTerm)}
-                                />
-                                📆 Long Term Medication
-                            </label>
+<label className="inline-check">
+  <input
+    type="checkbox"
+    checked={isLongTerm}
+    onChange={() => setIsLongTerm(!isLongTerm)}
+  />
+  <span>📆 Long Term Medication</span>
+</label>
                         </div>
 
                         {!isLongTerm && (
