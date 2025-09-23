@@ -396,10 +396,26 @@ export function looksSymptomOnly(q) {
 }
 
 // (Optional) light-weight intent tags you may use later
-export function detectIntent(q) {
-    const s = String(q).toLowerCase();
-    if (/\b(side\s*effects?|adverse)\b/.test(s)) return 'side_effects';
-    if (/\b(dose|dosage|how\s+much|how\s+many)\b/.test(s)) return 'dose';
-    if (/\b(what\s+is\s+\w+|what\s+is\s+\w+(\s\w+)?\s+used\s+for|why\s+(take|use))\b/.test(s)) return 'used_for';
-    return null;
+xport function detectIntent(q) {
+  const s = String(q).toLowerCase();
+
+  // dose
+  if (/\b(dose|dosage|how\s+much|how\s+many|how\s+often|mg\b)\b/.test(s)) {
+    return 'dose';
+  }
+
+  // side effects
+  if (/\b(side\s*effects?|adverse|risks?|warnings?)\b/.test(s)) {
+    return 'side_effects';
+  }
+
+  // used for / indications
+  if (
+    /\b(used\s+for|what\s+is\s+.+\s+used\s+for|what\s+is\s+.+\s+for|indications?)\b/.test(s)
+    || /^what\s+is\s+\w+(\s+\w+){0,2}\??$/.test(s)  // e.g. "what is metformin?"
+  ) {
+    return 'used_for';
+  }
+
+  return null;
 }

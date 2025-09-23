@@ -702,34 +702,31 @@ async function streamAnswerForText(initialQuestion, options = {}) {
   // You can attach this to the payload if your backend supports section routing.
 
 // --- Build a canonical question to help retrieval ---
-  // Pull out the canonical medicine display for downstream use
-  const chosen =
-    resolution.status === 'confirm'
-      ? resolution.suggestion
-      : resolution.status === 'exact'
-      ? resolution.choice
-      : null;
+const chosen =
+  resolution.status === 'confirm'
+    ? resolution.suggestion
+    : resolution.status === 'exact'
+    ? resolution.choice
+    : null;
 
-  const canonicalMed = chosen?.display || null;
+// prefer generic for retrieval; keep display for UI
+const brandName   = chosen?.display || null;         // e.g., "Panadol"
+const genericName = chosen?.generic || brandName;    // e.g., "paracetamol"
+const intent      = detectIntent(userQ) || null;
 
-  // Detect intent (dose / side_effects / used_for)
-  const intent = detectIntent(userQ) || null;
+// Start from the user’s raw text
+let canonicalQuestion = userQ;
 
-  // Start from the user’s raw text
-  let canonicalQuestion = userQ;
-
-  // If this is a "what is it / used for" style, rewrite to match Medsafe CMI wording
-  if (intent === 'used_for' && canonicalMed) {
-    canonicalQuestion = `What ${canonicalMed} is used for (from Medsafe CMI)?`;
-  }
-
-  // Optional: normalise other intents slightly (keeps your current prompt working)
-  if (intent === 'dose' && canonicalMed) {
-    canonicalQuestion = `Usual dose and how to take ${canonicalMed} (from Medsafe CMI).`;
-  }
-  if (intent === 'side_effects' && canonicalMed) {
-    canonicalQuestion = `Possible side effects of ${canonicalMed} (from Medsafe CMI).`;
-  }
+// For used_for / dose / side effects, ask in Medsafe style, using GENERIC
+if (intent === 'used_for' && genericName) {
+  canonicalQuestion = `What ${genericName} is used for (from Medsafe CMI)?`;
+}
+if (intent === 'dose' && genericName) {
+  canonicalQuestion = `Usual dose and how to take ${genericName} (from Medsafe CMI).`;
+}
+if (intent === 'side_effects' && genericName) {
+  canonicalQuestion = `Possible side effects of ${genericName} (from Medsafe CMI).`;
+}
 
   // cancel any in-flight request and any ongoing speech
   try { chatAbortRef.current?.abort(); } catch {}
@@ -788,19 +785,46 @@ const payload = {
       }
     }
 
-    // If the stream produced no text (edge runtimes, proxies), fall back to non-stream
+// If the stream produced no text, try non-stream, then force a generic-name retry once.
 if (!fullText.trim()) {
+  let finalText = '';
+
+  // 1) normal non-stream fallback
   try {
     const r2 = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    const j = await r2.json().catch(() => null);
-    setAnswer(j?.answer || '⚠️ No response received.');
-  } catch {
-    setAnswer('⚠️ Network error.');
+    const j2 = await r2.json().catch(() => null);
+    finalText = (j2?.answer || '').trim();
+  } catch { /* ignore; we'll try generic next */ }
+
+  // 2) generic-forced retry (only if we didn't already ask with the generic)
+  const triedGeneric =
+    genericName && (canonicalQuestion || '').toLowerCase().includes(genericName.toLowerCase());
+
+  if (!finalText && genericName && !triedGeneric) {
+    // tailor the fallback to the detected intent
+    let genericQ = `From Medsafe CMI: what is ${genericName} used for?`;
+    if (intent === 'dose')         genericQ = `Usual dose and how to take ${genericName} (from Medsafe CMI).`;
+    if (intent === 'side_effects') genericQ = `Possible side effects of ${genericName} (from Medsafe CMI).`;
+    if (intent === 'used_for')     genericQ = `What ${genericName} is used for (from Medsafe CMI)?`;
+
+    const fallbackPayload = { ...payload, question: genericQ };
+
+    try {
+      const r3 = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fallbackPayload)
+      });
+      const j3 = await r3.json().catch(() => null);
+      finalText = (j3?.answer || '').trim();
+    } catch { /* swallow */ }
   }
+
+  setAnswer(finalText || '⚠️ No response received.');
 }
 
     // Speak only if this was a voice-initiated query
