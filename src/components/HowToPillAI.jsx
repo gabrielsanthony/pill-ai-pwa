@@ -2,6 +2,9 @@
 import React from "react";
 import Modal from "./Modal.jsx";
 
+// YouTube Shorts ID for "How to use Pill-AI"
+const YT_VIDEO_ID = "pCMAFGFJRo0";
+
 /**
  * Fully localized copy for How-to modal.
  * You can tweak any phrasing below without touching the render logic.
@@ -484,12 +487,51 @@ function Card({ c }) {
   );
 }
 
+// Small inline responsive wrapper (works without extra CSS files)
+function PortraitVideo({ videoId, title = "How to use Pill-AI video" }) {
+  const wrapper = {
+    position: "relative",
+    width: "100%",
+    // 9:16 portrait -> padding-bottom: 177.78%
+    paddingBottom: "177.78%",
+    margin: "12px 0 20px 0",
+    borderRadius: 8,
+    overflow: "hidden",
+    boxShadow: "0 0 0 1px rgba(0,0,0,.06) inset",
+    maxWidth: 420,
+    marginLeft: "auto",
+    marginRight: "auto"
+  };
+  const iframe = {
+    position: "absolute",
+    inset: 0,
+    width: "100%",
+    height: "100%",
+    border: 0
+  };
+  return (
+    <div style={wrapper} aria-label={title}>
+      <iframe
+        style={iframe}
+        src={`https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`}
+        title={title}
+        frameBorder="0"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowFullScreen
+      />
+    </div>
+  );
+}
+
 export default function HowToPillAI({ isOpen, onClose, language = "English" }) {
   if (!isOpen) return null;
   const t = HOWTO[language] || HOWTO.English;
 
   return (
     <Modal open={isOpen} onClose={onClose} title={t.title}>
+      {/* Embedded YouTube Shorts (portrait) */}
+      <PortraitVideo videoId={YT_VIDEO_ID} />
+
       <div className="howto">
         {t.cards.map((c, i) => (
           <Card key={i} c={c} />
