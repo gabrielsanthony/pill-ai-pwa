@@ -1043,3 +1043,29 @@ textarea.answer-box {
 
 /* If a popover exists, don't clip it at the viewport frame */
 .card-viewport:has(.cs-popover) { overflow: visible; }
+
+/* 16:9 default */
+.responsive-video {
+  position: relative;
+  width: 100%;
+  padding-bottom: 56.25%;
+  margin: 12px 0 20px 0;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.06) inset;
+}
+.responsive-video iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+/* 9:16 portrait (YouTube Shorts) */
+.responsive-video.portrait {
+  padding-bottom: 177.78%; /* 9/16 = 0.5625 -> 100/0.5625 = 177.78% */
+  max-width: 420px;         /* optional: keep a nice readable width in the modal */
+  margin-left: auto;
+  margin-right: auto;
+}
