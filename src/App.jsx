@@ -21,6 +21,13 @@ import NameOnboardingModal from './components/NameOnboardingModal.jsx';
 import { listenUserProfile, getCurrentUid } from './utils/firebase-db';
 import { getAuth, onAuthStateChanged, signInAnonymously } from 'firebase/auth';
 
+import {
+  resolveNameOrSuggest,
+  looksSymptomOnly,
+  detectIntent
+} from './utils/med-intent';
+
+
 // 🚨 Overdue bookkeeping
 const getOverdueMap = () => {
   try { return JSON.parse(localStorage.getItem('overdueMap') || '{}'); }
@@ -648,6 +655,82 @@ async function handleVoiceQuery(transcript) {
 async function streamAnswerForText(initialQuestion, options = {}) {
   const speak = !!options.speak;
 
+  // --- SAFETY PRECHECK: medicine-name presence + typo handling ---
+  const userQ = (initialQuestion || question || '').trim();
+
+  // 1) Symptom-only guardrail (no medicine name → stop here)
+  if (looksSymptomOnly(userQ)) {
+    setAnswer(
+      "Pill-AI can only give information about specific medicines from Medsafe.\n" +
+      "Please ask about a medicine by name (e.g., “What’s the usual dose of Panadol for a 13-year-old?”).\n" +
+      "For advice on which medicine suits a symptom (like congestion), talk to a pharmacist or doctor."
+    );
+    return;
+  }
+
+  // 2) Resolve / confirm medicine name
+  const resolution = resolveNameOrSuggest(userQ);
+  if (resolution.status === 'none') {
+    setAnswer(
+      "Sorry—I couldn’t recognise a specific medicine name in your question.\n" +
+      "Please include the medicine name (brand or generic)."
+    );
+    return;
+  }
+  if (resolution.status === 'confirm') {
+    const s = resolution.suggestion;
+    const ok = window.confirm(`Did you mean "${s.display}" (${s.generic})?`);
+    if (!ok) {
+      setAnswer("Okay—please retype the medicine name so I can fetch the right Medsafe info.");
+      return;
+    }
+    // If user confirms, we’ll replace the guessed token in the question
+    // with the canonical display name to help downstream retrieval.
+  }
+  if (resolution.status === 'choose') {
+    const opts = resolution.options.map(o => o.display).join(', ');
+    setAnswer(
+      "I found several possible medicines. Please retype and choose one of these:\n" +
+      opts
+    );
+    return;
+  }
+  // resolution.status === 'exact' or confirmed single suggestion
+  // (Nothing else to do here; downstream retrieval will use the question as-is.)
+
+  // (Optional, for later) intent = detectIntent(userQ);
+  // You can attach this to the payload if your backend supports section routing.
+
+// --- Build a canonical question to help retrieval ---
+  // Pull out the canonical medicine display for downstream use
+  const chosen =
+    resolution.status === 'confirm'
+      ? resolution.suggestion
+      : resolution.status === 'exact'
+      ? resolution.choice
+      : null;
+
+  const canonicalMed = chosen?.display || null;
+
+  // Detect intent (dose / side_effects / used_for)
+  const intent = detectIntent(userQ) || null;
+
+  // Start from the user’s raw text
+  let canonicalQuestion = userQ;
+
+  // If this is a "what is it / used for" style, rewrite to match Medsafe CMI wording
+  if (intent === 'used_for' && canonicalMed) {
+    canonicalQuestion = `What ${canonicalMed} is used for (from Medsafe CMI)?`;
+  }
+
+  // Optional: normalise other intents slightly (keeps your current prompt working)
+  if (intent === 'dose' && canonicalMed) {
+    canonicalQuestion = `Usual dose and how to take ${canonicalMed} (from Medsafe CMI).`;
+  }
+  if (intent === 'side_effects' && canonicalMed) {
+    canonicalQuestion = `Possible side effects of ${canonicalMed} (from Medsafe CMI).`;
+  }
+
   // cancel any in-flight request and any ongoing speech
   try { chatAbortRef.current?.abort(); } catch {}
   try { window.speechSynthesis?.cancel(); } catch {}
@@ -658,7 +741,7 @@ async function streamAnswerForText(initialQuestion, options = {}) {
   if (initialQuestion) setQuestion(initialQuestion);
 
 const payload = {
-  question: initialQuestion || question,
+  question: canonicalQuestion,
   language: NORMALIZE_LANG(language),
   simplify: true,
   memory: false
