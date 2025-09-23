@@ -396,7 +396,7 @@ export function looksSymptomOnly(q) {
 }
 
 // (Optional) light-weight intent tags you may use later
-xport function detectIntent(q) {
+export function detectIntent(q) {
   const s = String(q).toLowerCase();
 
   // dose
