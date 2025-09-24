@@ -397,23 +397,27 @@ export function looksSymptomOnly(q) {
 
 // (Optional) light-weight intent tags you may use later
 export function detectIntent(q) {
-  const s = String(q).toLowerCase();
+  const s = String(q || '').toLowerCase();
 
-  // dose
-  if (/\b(dose|dosage|how\s+much|how\s+many|how\s+often|mg\b)\b/.test(s)) {
-    return 'dose';
-  }
-
-  // side effects
-  if (/\b(side\s*effects?|adverse|risks?|warnings?)\b/.test(s)) {
+  // side effects first
+  if (/\b(side\s*effects?|adverse\s*(effects?|reactions?)|side-effect)\b/.test(s)) {
     return 'side_effects';
   }
 
-  // used for / indications
+  // dose / how to take / directions / food / missed dose, etc.
   if (
-    /\b(used\s+for|what\s+is\s+.+\s+used\s+for|what\s+is\s+.+\s+for|indications?)\b/.test(s)
-    || /^what\s+is\s+\w+(\s+\w+){0,2}\??$/.test(s)  // e.g. "what is metformin?"
+    /\b(dose|dosage|how\s+much|how\s+many|how\s+often|frequency|mg\b|tablet|tablets|capsules?)\b/.test(s) ||
+    /\b(how\s+(do|should)\s+i\s+take)\b/.test(s) ||
+    /\b(how\s+to\s+take|taking\s+instructions?|instructions?|directions?)\b/.test(s) ||
+    /\b(take\s+(with|without)\s+food|with\s+food|before\s+food|after\s+food)\b/.test(s) ||
+    /\b(when\s+to\s+take|what\s+time\s+to\s+take)\b/.test(s) ||
+    /\b(missed\s+dose|if\s+i\s+miss)\b/.test(s)
   ) {
+    return 'dose';
+  }
+
+  // what is X / what is X used for / why take
+  if (/\b(what\s+is\s+[a-z0-9-]+(\s[a-z0-9-]+){0,2}\s*(used\s+for)?|why\s+(take|use))\b/.test(s)) {
     return 'used_for';
   }
 
